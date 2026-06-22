@@ -1,0 +1,41 @@
+{
+  "name": "aieb-thin-plugin",
+  "version": "0.1.0",
+  "description": "Thin AI Employee Builder plugin shell that routes paid skills to the gated AIEB MCP server.",
+  "author": {
+    "name": "Rashid Khamis",
+    "email": "rashid@thepeakperformer.io",
+    "url": "https://chiefleverageofficer.substack.com/"
+  },
+  "homepage": "https://chiefleverageofficer.substack.com/",
+  "repository": "https://github.com/the2hourclo/clo-os-plugins",
+  "license": "UNLICENSED",
+  "keywords": [
+    "aieb",
+    "ai-employees",
+    "mcp",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "AI Employee Builder",
+    "shortDescription": "Routes AIEB skills through the gated MCP runtime.",
+    "longDescription": "A thin plugin shell for AI Employee Builder. It keeps routing and onboarding local while paid skill instructions are fetched from the licensed AIEB MCP server at runtime.",
+    "developerName": "The 2 Hour CLO",
+    "category": "Productivity",
+    "capabilities": [
+      "MCP",
+      "Skills"
+    ],
+    "websiteURL": "https://chiefleverageofficer.substack.com/",
+    "privacyPolicyURL": "https://chiefleverageofficer.substack.com/",
+    "termsOfServiceURL": "https://chiefleverageofficer.substack.com/",
+    "defaultPrompt": [
+      "Create a skill for my workflow.",
+      "Build an MCP for my business.",
+      "Turn this into an AI employee."
+    ],
+    "brandColor": "#14B8A6"
+  }
+}

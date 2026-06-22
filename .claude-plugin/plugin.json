@@ -1,0 +1,22 @@
+{
+  "name": "ai-employee-builder-mcp",
+  "version": "0.1.0",
+  "description": "Thin AI Employee Builder plugin shell that routes paid skills to the gated AIEB MCP server.",
+  "author": {
+    "name": "Rashid Khamis",
+    "email": "rashid@thepeakperformer.io",
+    "url": "https://chiefleverageofficer.substack.com/"
+  },
+  "homepage": "https://chiefleverageofficer.substack.com/",
+  "repository": "https://github.com/the2hourclo/aieb-thin-plugin",
+  "license": "UNLICENSED",
+  "keywords": [
+    "aieb",
+    "ai-employees",
+    "mcp",
+    "skills",
+    "claude-code"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

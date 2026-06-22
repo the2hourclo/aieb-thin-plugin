@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "aieb": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "./scripts/aieb-mcp-proxy.mjs"
+      ],
+      "env": {
+        "AIEB_MCP_URL": "https://aieb-gated-mcp.vercel.app/mcp",
+        "AIEB_ACTIVATE_URL": "https://aieb-gated-mcp.vercel.app/activate",
+        "AIEB_LICENSE_KEY": "PASTE_LEMONSQUEEZY_LICENSE_KEY_HERE"
+      }
+    }
+  }
+}
