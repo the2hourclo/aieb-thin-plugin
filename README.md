@@ -65,3 +65,11 @@ The included stdio proxy activates the buyer's license once through `/activate`,
 The plugin should be published as a free/public shell. Buyers install the shell, paste their LemonSqueezy key into the MCP config, and the proxy activates the key on first use.
 
 Skill updates are published by updating the MCP server content and redeploying Vercel. Buyers do not reinstall the plugin unless the local shell changes.
+
+Claude Code install commands:
+
+```text
+/plugin marketplace add https://github.com/the2hourclo/aieb-thin-plugin
+/plugin install ai-employee-builder-mcp@aieb-thin-plugin
+/reload-plugins
+```
