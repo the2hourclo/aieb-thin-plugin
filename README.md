@@ -1,8 +1,8 @@
-# AIEB Thin Plugin
+# AI Employee Builder Public Shell
 
 This plugin intentionally contains no paid AIEB instruction bodies.
 
-It provides routing stubs for the 11 AI Employee Builder skills and connects the client to the hosted `aieb` MCP server. The server validates the buyer's LemonSqueezy license and returns skill instructions at runtime through `get_skill`.
+It gives buyers a public AI Employee Builder plugin they can install in Claude Code, then helps them connect to the hosted `aieb` MCP server. The server validates the buyer's LemonSqueezy license and returns paid skill instructions at runtime through `get_skill`.
 
 The hosted production MCP is:
 
@@ -16,15 +16,42 @@ The activation endpoint is:
 https://aieb-gated-mcp.vercel.app/activate
 ```
 
-## Configure
+## Install
 
-Edit `.mcp.json` after installation:
+```text
+/plugin marketplace add https://github.com/the2hourclo/aieb-thin-plugin
+/plugin install ai-employee-builder@aieb-thin-plugin
+/reload-plugins
+```
+
+Then run the setup command:
+
+```text
+/setup-aieb
+```
+
+The command prompts for the buyer's Lemon Squeezy license key and writes the local MCP config.
+
+## MCP Config Shape
+
+The setup command writes this MCP server entry:
 
 ```json
 {
-  "AIEB_MCP_URL": "https://aieb-gated-mcp.vercel.app/mcp",
-  "AIEB_ACTIVATE_URL": "https://aieb-gated-mcp.vercel.app/activate",
-  "AIEB_LICENSE_KEY": "buyer-license-key"
+  "mcpServers": {
+    "aieb": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "ABSOLUTE_PATH_TO_PLUGIN/scripts/aieb-mcp-proxy.mjs"
+      ],
+      "env": {
+        "AIEB_MCP_URL": "https://aieb-gated-mcp.vercel.app/mcp",
+        "AIEB_ACTIVATE_URL": "https://aieb-gated-mcp.vercel.app/activate",
+        "AIEB_LICENSE_KEY": "buyer-license-key"
+      }
+    }
+  }
 }
 ```
 
@@ -43,7 +70,7 @@ If the MCP client supports HTTP headers directly, you can skip the stdio proxy a
 
 ## Runtime Contract
 
-Each skill stub tells the agent to call:
+Once the MCP is connected, the client calls:
 
 ```json
 {
@@ -62,14 +89,6 @@ The included stdio proxy activates the buyer's license once through `/activate`,
 
 ## Buyer Install Shape
 
-The plugin should be published as a free/public shell. Buyers install the shell, paste their LemonSqueezy key into the MCP config, and the proxy activates the key on first use.
+The plugin is a free/public shell. Buyers install the shell, run `/setup-aieb`, paste their LemonSqueezy key, and the proxy activates the key on first use.
 
 Skill updates are published by updating the MCP server content and redeploying Vercel. Buyers do not reinstall the plugin unless the local shell changes.
-
-Claude Code install commands:
-
-```text
-/plugin marketplace add https://github.com/the2hourclo/aieb-thin-plugin
-/plugin install ai-employee-builder-mcp@aieb-thin-plugin
-/reload-plugins
-```

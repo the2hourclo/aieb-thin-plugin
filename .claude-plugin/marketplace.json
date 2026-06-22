@@ -5,15 +5,15 @@
     "email": "rashid@thepeakperformer.io"
   },
   "metadata": {
-    "description": "Free thin AI Employee Builder shell that routes licensed skill bodies through the hosted AIEB MCP server.",
-    "version": "0.1.0"
+    "description": "Free AI Employee Builder shell that helps buyers connect to the hosted licensed AIEB MCP server.",
+    "version": "0.2.0"
   },
   "plugins": [
     {
-      "name": "ai-employee-builder-mcp",
+      "name": "ai-employee-builder",
       "source": "./",
-      "description": "Thin AI Employee Builder plugin shell with local stubs and an MCP proxy. Paid skill instructions are served at runtime by the gated AIEB MCP server.",
-      "version": "0.1.0",
+      "description": "Public AI Employee Builder plugin shell. It contains setup guidance and a local MCP proxy; paid skill instructions are served at runtime by the gated AIEB MCP server.",
+      "version": "0.2.0",
       "author": {
         "name": "Rashid Khamis",
         "email": "rashid@thepeakperformer.io"
@@ -23,7 +23,7 @@
         "aieb",
         "ai-employees",
         "mcp",
-        "skills",
+        "setup",
         "claude-code"
       ]
     }

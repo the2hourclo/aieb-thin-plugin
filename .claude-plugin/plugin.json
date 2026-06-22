@@ -1,7 +1,7 @@
 {
-  "name": "ai-employee-builder-mcp",
-  "version": "0.1.0",
-  "description": "Thin AI Employee Builder plugin shell that routes paid skills to the gated AIEB MCP server.",
+  "name": "ai-employee-builder",
+  "version": "0.2.0",
+  "description": "Public AI Employee Builder shell that helps buyers connect to the gated AIEB MCP server.",
   "author": {
     "name": "Rashid Khamis",
     "email": "rashid@thepeakperformer.io",
@@ -14,9 +14,7 @@
     "aieb",
     "ai-employees",
     "mcp",
-    "skills",
+    "setup",
     "claude-code"
-  ],
-  "skills": "./skills/",
-  "mcpServers": "./.mcp.json"
+  ]
 }
