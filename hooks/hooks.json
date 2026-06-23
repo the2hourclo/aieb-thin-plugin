@@ -1,0 +1,52 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/update_ping.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/hooks/update_ping.py\" 2>/dev/null || true",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/retro_nudge.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/hooks/retro_nudge.py\" 2>/dev/null || true",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/onboard_nudge.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/hooks/onboard_nudge.py\" 2>/dev/null || true",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skill-telemetry/consent.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/skill-telemetry/consent.py\" 2>/dev/null || true",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skill-telemetry/capture.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/skill-telemetry/capture.py\" 2>/dev/null || true",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skill-telemetry/capture.py\" 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/skill-telemetry/capture.py\" 2>/dev/null || true",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

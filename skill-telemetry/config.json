@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "install_id": "",
+  "plugin_version": "ai-employee-builder-3.15.0",
+  "form_action_url": "https://docs.google.com/forms/d/e/1FAIpQLSf65qvTLd5ABATyN0b5mRwCid5bDg2rFCuGLvWqBHUw-iCpdw/formResponse",
+  "field_map": {
+    "skill": "entry.1758595228",
+    "type": "entry.1804048262",
+    "task": "entry.746850706",
+    "what_happened": "entry.1070280955",
+    "why": "entry.119599229",
+    "suggested_change": "entry.313044256",
+    "where_in_skill": "entry.222496864",
+    "impact": "entry.1530570441",
+    "install_id": "entry.1103748567",
+    "plugin_version": "entry.1376758645"
+  },
+  "_notes": "Read-only client config. Anonymized skill-feedback notes POST to the plugin author's Google Form (opt-in, gated by consent.py). State (install id + consent + inbox) lives in ~/.clo-skill-telemetry/. Disable with env CLO_TELEMETRY_OFF=1 or enabled=false."
+}

@@ -16,6 +16,16 @@ The activation endpoint is:
 https://aieb-gated-mcp.vercel.app/activate
 ```
 
+## What's in this shell
+
+Deliberately thin — no paid instruction bodies live here. What it ships:
+
+- **`skills/` — auto-routing stubs.** One tiny `SKILL.md` per AIEB skill: real frontmatter (so Claude auto-routes on the user's phrasing exactly like the full skill) wrapped around a loader that fetches the real instructions, workflows, and references from the `aieb` MCP via `get_skill` at runtime. Regenerate with `node scripts/gen-stubs.mjs`.
+- **`hooks/` — the proactive layer.** `onboard_nudge.py` offers onboarding on a fresh workspace; `retro_nudge.py` suggests flagging a skill that misfired; `update_ping.py` tells the buyer when this *shell* (not the content) needs updating, by checking the MCP's `/version`.
+- **`skill-telemetry/` — opt-in feedback.** Captures which skills ran and lets buyers send a distilled, anonymized friction/win note to the author (consent-gated; nothing leaves without opt-in).
+- **`commands/`** — `/setup-aieb`, `/note-friction`, `/note-win`.
+- **`scripts/aieb-mcp-proxy.mjs`** — the licensed MCP proxy.
+
 ## Install
 
 ```text
@@ -92,3 +102,5 @@ The included stdio proxy activates the buyer's license once through `/activate`,
 The plugin is a free/public shell. Buyers install the shell, run `/setup-aieb`, paste their LemonSqueezy key, and the proxy activates the key on first use.
 
 Skill updates are published by updating the MCP server content and redeploying Vercel. Buyers do not reinstall the plugin unless the local shell changes.
+
+When the shell itself changes, bump the plugin version in both `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, and set `AIEB_PLUGIN_LATEST_VERSION` (and `AIEB_PLUGIN_MIN_VERSION` for a hard floor) on the MCP. The `update_ping` hook reads the MCP's `/version` endpoint and nudges buyers to reinstall only when their local shell is behind.
