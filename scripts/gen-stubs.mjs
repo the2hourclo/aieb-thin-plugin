@@ -39,6 +39,7 @@ const SKILLS = [
   "business-os",
   "retrospective",
   "onboard",
+  "roadmap",
   "install-skill",
 ];
 
