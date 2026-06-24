@@ -1,6 +1,6 @@
 {
   "name": "ai-employee-builder",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Public AI Employee Builder shell: auto-routing skill stubs + proactive hooks that connect buyers to the gated AIEB MCP server.",
   "author": {
     "name": "Rashid Khamis",
