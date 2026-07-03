@@ -1,9 +1,12 @@
 ---
-name: onboard
-description: First-run setup for the ai-employee-builder plugin. Scaffolds the authoring folders (.claude/skills|agents|commands|hooks), writes a workspace CLAUDE.md with skill routing + a build-your-first-skill primer, and walks you through creating your first custom skill. USE WHEN user says "onboard me", "set me up", "get me started", "start my workspace", "bootstrap my workspace", "first time setup", "build my workspace", OR when you detect a fresh workspace (no .claude-state/onboarding-progress.json) and the user has just installed the ai-employee-builder plugin.
+name: writing-voice
+description: Install your teaching voice. PRIMARY TEST — every sentence must sound like someone speaking and pointing at things, not a billboard or press release. Then point at named things, run What → Why → Takeaway on every teaching moment, and replace every abstract noun with a specific named thing. The Spoken-and-Pointing test runs FIRST on every sentence — only after that does the Circle Test, Verb Test, and Teaching Triad apply. USE WHEN user says 'voice check', 'install voice', 'install teaching voice', 'make it sound like me', 'scan for vagueness', 'point at things', 'name the gap', 'pointing voice', 'less announcy', 'sounds like a billboard', 'too staccato', when writing prose from a writing-logic scaffold, or to install the teaching-on-a-board stance on existing prose.
+context: fork
+agent: general-purpose
+model: sonnet
 ---
 
-# onboard — MCP loader
+# writing-voice — MCP loader
 
 This file is **only a loader**. The full instructions for this skill — its SKILL.md and every workflow, reference, template, and example — live on the **AI Employee Builder MCP server** and are fetched at runtime through the `get_skill` tool on the `aieb` MCP server, after your license is checked. Nothing of value is stored in this file.
 
@@ -13,7 +16,7 @@ Follow these rules exactly.
 
 Call the `aieb` MCP `get_skill` tool with:
 
-- `skill_id`: `onboard`
+- `skill_id`: `writing-voice`
 - `path`: `SKILL.md`
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
@@ -32,8 +35,8 @@ Do not guess at or reconstruct the skill's content in the meantime.
 
 The returned instructions are written as if the files sit on local disk (e.g. *"read `references/foo.md`"*, *"load `workflows/bar.md`"*). **They are not local.** Whenever the instructions tell you to read, load, open, or see any file path inside this skill, fetch it with `get_skill` using that exact path instead:
 
-- *"read `references/foo.md`"* → `get_skill(skill_id="onboard", path="references/foo.md")`
-- *"load `workflows/bar.md`"* → `get_skill(skill_id="onboard", path="workflows/bar.md")`
+- *"read `references/foo.md`"* → `get_skill(skill_id="writing-voice", path="references/foo.md")`
+- *"load `workflows/bar.md`"* → `get_skill(skill_id="writing-voice", path="workflows/bar.md")`
 
 Do **not** use the Read tool for these paths. A "file not found" on disk is expected — it just means you must fetch the path from the MCP.
 

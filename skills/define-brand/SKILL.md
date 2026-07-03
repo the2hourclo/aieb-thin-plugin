@@ -1,9 +1,9 @@
 ---
-name: onboard
-description: First-run setup for the ai-employee-builder plugin. Scaffolds the authoring folders (.claude/skills|agents|commands|hooks), writes a workspace CLAUDE.md with skill routing + a build-your-first-skill primer, and walks you through creating your first custom skill. USE WHEN user says "onboard me", "set me up", "get me started", "start my workspace", "bootstrap my workspace", "first time setup", "build my workspace", OR when you detect a fresh workspace (no .claude-state/onboarding-progress.json) and the user has just installed the ai-employee-builder plugin.
+name: define-brand
+description: "Define or sharpen a personal/business brand through a guided interview, then produce two working references — a one-page positioning spine and a False Beliefs Document. Runs the brand questions one or two at a time, open-question-first then a proposed draft to react to, and holds every answer against the branding principles. USE WHEN the user says 'define my brand', 'brand worksheet', 'sharpen my positioning', 'who am I for', 'what's my pairing', 'what do I stand against', 'find my unique edge', 'work on my brand', or BEFORE creating content when no brand is defined yet. Do NOT use to write a finished piece (that's the content skills), to set up or calibrate voice files/voice samples (that's setup-content-employees), to map operations (that's business-x-ray), or to design visuals (that's visual-content)."
 ---
 
-# onboard — MCP loader
+# define-brand — MCP loader
 
 This file is **only a loader**. The full instructions for this skill — its SKILL.md and every workflow, reference, template, and example — live on the **AI Employee Builder MCP server** and are fetched at runtime through the `get_skill` tool on the `aieb` MCP server, after your license is checked. Nothing of value is stored in this file.
 
@@ -13,7 +13,7 @@ Follow these rules exactly.
 
 Call the `aieb` MCP `get_skill` tool with:
 
-- `skill_id`: `onboard`
+- `skill_id`: `define-brand`
 - `path`: `SKILL.md`
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
@@ -32,8 +32,8 @@ Do not guess at or reconstruct the skill's content in the meantime.
 
 The returned instructions are written as if the files sit on local disk (e.g. *"read `references/foo.md`"*, *"load `workflows/bar.md`"*). **They are not local.** Whenever the instructions tell you to read, load, open, or see any file path inside this skill, fetch it with `get_skill` using that exact path instead:
 
-- *"read `references/foo.md`"* → `get_skill(skill_id="onboard", path="references/foo.md")`
-- *"load `workflows/bar.md`"* → `get_skill(skill_id="onboard", path="workflows/bar.md")`
+- *"read `references/foo.md`"* → `get_skill(skill_id="define-brand", path="references/foo.md")`
+- *"load `workflows/bar.md`"* → `get_skill(skill_id="define-brand", path="workflows/bar.md")`
 
 Do **not** use the Read tool for these paths. A "file not found" on disk is expected — it just means you must fetch the path from the MCP.
 
