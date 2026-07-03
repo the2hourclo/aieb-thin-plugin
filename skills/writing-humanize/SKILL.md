@@ -1,8 +1,9 @@
 ---
 name: writing-humanize
-description: Make AI-generated text sound human. Scrub AI tells (em-dashes, staccato, filler-deficit, announcer scaffolding, And/So/Now/Because openers, billboard proclamations), enforce active voice, and check deliverable integrity. Works standalone on any text. USE WHEN user says 'humanize this', 'clean up AI-isms', 'make this sound human', 'voice cleanup', 'remove AI patterns', 'sound more natural', 'check for AI tells', 'fix the voice', or when any writing needs voice cleanup after drafting.
+description: Writing employee · Make AI-generated text sound human. Scrub AI tells (em-dashes, staccato, filler-deficit, announcer scaffolding, And/So/Now/Because openers, billboard proclamations), enforce active voice, and check deliverable integrity. Works standalone on any text. USE WHEN user says 'humanize this', 'clean up AI-isms', 'make this sound human', 'voice cleanup', 'remove AI patterns', 'sound more natural', 'check for AI tells', 'fix the voice', or when any writing needs voice cleanup after drafting.
 context: fork
 agent: general-purpose
+user-invocable: false
 ---
 
 # writing-humanize — MCP loader

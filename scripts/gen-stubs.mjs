@@ -110,7 +110,49 @@ If \`get_skill\` returns a license or entitlement error, stop. Tell the user pla
 `;
 }
 
+// Menu slimming (manifest-driven, sources untouched): every stub description is
+// prefixed with its employee label ("Writing employee · …") so grouped identity
+// survives on surfaces that ignore user-invocable; skills marked menu:"hidden"
+// (the chain gears) also get `user-invocable: false` so they leave the visible
+// /skill menu while model-invocation and cross-skill chains keep working.
+const EMPLOYEE_LABELS = {
+  builder: "Builder employee",
+  setup: "Setup employee",
+  writing: "Writing employee"
+};
+
+function applyMenuFields(frontmatter, skillMeta) {
+  let fm = frontmatter;
+  const label = EMPLOYEE_LABELS[skillMeta?.employee];
+  if (label) {
+    const lines = fm.split(/\r?\n/);
+    const i = lines.findIndex((line) => /^description\s*:/.test(line));
+    if (i !== -1) {
+      const after = lines[i].replace(/^description\s*:\s*/, "");
+      if (/^[>|]/.test(after)) {
+        // Block/folded scalar: prefix the first content line instead.
+        for (let j = i + 1; j < lines.length; j++) {
+          if (lines[j].trim()) {
+            lines[j] = lines[j].replace(/^(\s*)/, `$1${label} · `);
+            break;
+          }
+        }
+      } else {
+        const quote = after.startsWith('"') || after.startsWith("'") ? after[0] : "";
+        const rest = quote ? after.slice(1) : after;
+        lines[i] = `description: ${quote}${label} · ${rest}`;
+      }
+      fm = lines.join("\n");
+    }
+  }
+  if (skillMeta?.menu === "hidden") {
+    fm += `\nuser-invocable: false`;
+  }
+  return fm;
+}
+
 let count = 0;
+let hiddenCount = 0;
 for (const { id, srcRoot, tier } of SKILLS) {
   const srcPath = path.join(srcRoot, id, "SKILL.md");
   if (!fs.existsSync(srcPath)) {
@@ -123,7 +165,9 @@ for (const { id, srcRoot, tier } of SKILLS) {
     console.error(`SKIP ${id} (${tier}): no frontmatter block in source`);
     continue;
   }
-  const frontmatter = m[1].trim();
+  const skillMeta = manifest.skills?.[id];
+  const frontmatter = applyMenuFields(m[1].trim(), skillMeta);
+  if (skillMeta?.menu === "hidden") hiddenCount++;
   const out = `---\n${frontmatter}\n---\n\n${loaderBody(id)}`;
   const dstDir = path.join(DST, id);
   fs.mkdirSync(dstDir, { recursive: true });
@@ -132,6 +176,7 @@ for (const { id, srcRoot, tier } of SKILLS) {
   const extras = ["context:", "hooks:", "agent:", "model:"]
     .filter((key) => frontmatter.includes(key))
     .map((key) => key.replace(":", ""));
-  console.log(`wrote skills/${id}/SKILL.md (${tier}${extras.length ? ", carries: " + extras.join("+") : ""})`);
+  const menuTag = skillMeta?.menu === "hidden" ? ", menu-hidden" : "";
+  console.log(`wrote skills/${id}/SKILL.md (${tier}${menuTag}${extras.length ? ", carries: " + extras.join("+") : ""})`);
 }
-console.log(`\nDone — ${count}/${SKILLS.length} stubs generated.`);
+console.log(`\nDone — ${count}/${SKILLS.length} stubs generated (${hiddenCount} menu-hidden).`);

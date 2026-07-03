@@ -1,6 +1,6 @@
 ---
 name: meta-create-plugin
-description: Package skills into a Claude Code plugin for distribution. Creates plugin folder structure, plugin.json manifest, and prepares for publishing. USE WHEN user says 'create a plugin', 'package these skills', 'bundle skills into a plugin', 'make a plugin from', 'publish plugin', 'plugin from skills'.
+description: Builder employee · Package skills into a Claude Code plugin for distribution. Creates plugin folder structure, plugin.json manifest, and prepares for publishing. USE WHEN user says 'create a plugin', 'package these skills', 'bundle skills into a plugin', 'make a plugin from', 'publish plugin', 'plugin from skills'.
 ---
 
 # meta-create-plugin — MCP loader

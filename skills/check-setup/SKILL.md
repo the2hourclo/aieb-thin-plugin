@@ -1,6 +1,6 @@
 ---
 name: check-setup
-description: Verify and repair this AI Employee Builder setup — connector, license plan, workspace folders, onboarding state, and the managed CLAUDE.md block — then offer consent-gated fixes. USE WHEN user says 'check my setup', 'verify my setup', 'is my setup ok', 'is everything connected', 'something seems broken', 'my skills stopped working', 'fix my setup', 'setup health check', 'am I connected', 'why isn't this working', or another skill or message told them to run a setup check. Safe to run any time — it changes nothing without an explicit yes.
+description: Setup employee · Verify and repair this AI Employee Builder setup — connector, license plan, workspace folders, onboarding state, and the managed CLAUDE.md block — then offer consent-gated fixes. USE WHEN user says 'check my setup', 'verify my setup', 'is my setup ok', 'is everything connected', 'something seems broken', 'my skills stopped working', 'fix my setup', 'setup health check', 'am I connected', 'why isn't this working', or another skill or message told them to run a setup check. Safe to run any time — it changes nothing without an explicit yes.
 ---
 
 # check-setup — MCP loader

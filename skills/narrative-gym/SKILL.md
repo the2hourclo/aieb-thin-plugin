@@ -1,6 +1,7 @@
 ---
 name: narrative-gym
-description: Apply the ABT (And, But, Therefore) narrative framework as a writing lens. Builds narrative backbone before writing or diagnoses why existing content isn't landing. USE WHEN user says 'apply abt', 'narrative lens', 'build my abt', 'find my hook', 'find my but', 'what's my tension', 'analyze my content', 'check my narrative', 'is this narrative', 'strengthen my hook', 'narrative gym', 'abt framework', or before starting any content piece that needs a clear hook and structure.
+description: Writing employee · Apply the ABT (And, But, Therefore) narrative framework as a writing lens. Builds narrative backbone before writing or diagnoses why existing content isn't landing. USE WHEN user says 'apply abt', 'narrative lens', 'build my abt', 'find my hook', 'find my but', 'what's my tension', 'analyze my content', 'check my narrative', 'is this narrative', 'strengthen my hook', 'narrative gym', 'abt framework', or before starting any content piece that needs a clear hook and structure.
+user-invocable: false
 ---
 
 # narrative-gym — MCP loader

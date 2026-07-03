@@ -1,6 +1,7 @@
 ---
 name: behavioral-science
-description: Apply behavioral science principles from Chase Hughes' Behavior Ops Manual to any content. Diagnose missed persuasion triggers, enhance drafts with specific techniques, or look up principles by category. 290 principles across 10 categories. USE WHEN user says 'behavioral science', 'behavior ops', 'apply behavioral lens', 'check persuasion', 'enhance with psychology', 'what behavioral principle', 'why isn't this landing', or when any content needs a behavioral science audit.
+description: Writing employee · Apply behavioral science principles from Chase Hughes' Behavior Ops Manual to any content. Diagnose missed persuasion triggers, enhance drafts with specific techniques, or look up principles by category. 290 principles across 10 categories. USE WHEN user says 'behavioral science', 'behavior ops', 'apply behavioral lens', 'check persuasion', 'enhance with psychology', 'what behavioral principle', 'why isn't this landing', or when any content needs a behavioral science audit.
+user-invocable: false
 ---
 
 # behavioral-science — MCP loader

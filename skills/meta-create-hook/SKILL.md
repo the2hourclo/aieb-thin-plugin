@@ -1,6 +1,6 @@
 ---
 name: meta-create-hook
-description: Create hooks for Claude Code automation. Covers ALL 14 hook events, ALL 6 hook locations (settings.json, frontmatter, plugins), ALL 3 hook types (prompt, command, agent), async hooks, input modification, and decision control. USE WHEN user says 'create a hook', 'add a hook', 'meta create hook', 'automate when', 'trigger when', 'run automatically', 'after writing', 'before commit', 'validate output', 'add automation to skill'.
+description: Builder employee · Create hooks for Claude Code automation. Covers ALL 14 hook events, ALL 6 hook locations (settings.json, frontmatter, plugins), ALL 3 hook types (prompt, command, agent), async hooks, input modification, and decision control. USE WHEN user says 'create a hook', 'add a hook', 'meta create hook', 'automate when', 'trigger when', 'run automatically', 'after writing', 'before commit', 'validate output', 'add automation to skill'.
 ---
 
 # meta-create-hook — MCP loader

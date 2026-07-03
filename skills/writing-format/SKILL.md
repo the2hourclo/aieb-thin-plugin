@@ -1,8 +1,9 @@
 ---
 name: writing-format
-description: Platform-specific formatting for publishable content. Apply Substack formatting (headers, bold, italic, blockquotes, spacing, visual rhythm) or carousel formatting. USE WHEN user says 'format for Substack', 'format this newsletter', 'apply formatting', 'make this publishable', 'format carousel', 'carousel formatting', 'Substack formatting', or when content needs platform-specific visual treatment.
+description: Writing employee · Platform-specific formatting for publishable content. Apply Substack formatting (headers, bold, italic, blockquotes, spacing, visual rhythm) or carousel formatting. USE WHEN user says 'format for Substack', 'format this newsletter', 'apply formatting', 'make this publishable', 'format carousel', 'carousel formatting', 'Substack formatting', or when content needs platform-specific visual treatment.
 context: fork
 agent: general-purpose
+user-invocable: false
 ---
 
 # writing-format — MCP loader

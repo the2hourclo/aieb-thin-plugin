@@ -1,6 +1,7 @@
 ---
 name: writing-logic
-description: Argument scaffolding system. Takes an idea (or a source) and sequences it into a Perspective-Shift scaffold — one protagonist's Old→New journey across labeled beats, one takeaway each, ordered to meet the reader where they are and break the idea down progressively. Build the scaffold, then QA it for logical integrity before any prose. USE WHEN user says 'plan argument', 'scaffold this', 'argument structure', 'plan the newsletter structure', 'sequence these ideas', 'logic check my writing', 'check my logic', 'expand this idea', 'map my ACTs', or when building the argument structure for any content piece before writing prose.
+description: Writing employee · Argument scaffolding system. Takes an idea (or a source) and sequences it into a Perspective-Shift scaffold — one protagonist's Old→New journey across labeled beats, one takeaway each, ordered to meet the reader where they are and break the idea down progressively. Build the scaffold, then QA it for logical integrity before any prose. USE WHEN user says 'plan argument', 'scaffold this', 'argument structure', 'plan the newsletter structure', 'sequence these ideas', 'logic check my writing', 'check my logic', 'expand this idea', 'map my ACTs', or when building the argument structure for any content piece before writing prose.
+user-invocable: false
 ---
 
 # writing-logic — MCP loader

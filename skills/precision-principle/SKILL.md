@@ -1,6 +1,7 @@
 ---
 name: precision-principle
-description: The clarity engine for claims and promises — the Meaning Test (would two people read it the same way?), Word Force (use the lowest-force word that does the job), and precision language rules (kill qualifiers, uncertainty markers, two-part negations). USE WHEN user says 'meaning test', 'word force', 'tighten this claim', 'make this specific', 'make this measurable', 'precision check', 'is this claim clear', 'this sounds hypey', 'lower the intensity', or when an offer/CTA/headline/promise needs its wording sharpened. Do NOT use for teaching-prose comprehension (that's writing-voice Sub-rule 1b) or argument structure (writing-logic).
+description: Writing employee · The clarity engine for claims and promises — the Meaning Test (would two people read it the same way?), Word Force (use the lowest-force word that does the job), and precision language rules (kill qualifiers, uncertainty markers, two-part negations). USE WHEN user says 'meaning test', 'word force', 'tighten this claim', 'make this specific', 'make this measurable', 'precision check', 'is this claim clear', 'this sounds hypey', 'lower the intensity', or when an offer/CTA/headline/promise needs its wording sharpened. Do NOT use for teaching-prose comprehension (that's writing-voice Sub-rule 1b) or argument structure (writing-logic).
+user-invocable: false
 ---
 
 # precision-principle — MCP loader

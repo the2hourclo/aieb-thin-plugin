@@ -1,6 +1,6 @@
 ---
 name: meta-create-mcp
-description: Add, configure, or build MCP servers in Claude Code. USE WHEN user says 'add an MCP', 'connect to', 'add integration', 'setup MCP', 'connect MCP server', 'add notion', 'add youtube', 'configure MCP', 'build an MCP', 'create MCP server'.
+description: Builder employee · Add, configure, or build MCP servers in Claude Code. USE WHEN user says 'add an MCP', 'connect to', 'add integration', 'setup MCP', 'connect MCP server', 'add notion', 'add youtube', 'configure MCP', 'build an MCP', 'create MCP server'.
 ---
 
 # meta-create-mcp — MCP loader

@@ -1,6 +1,6 @@
 ---
 name: meta-create-agent
-description: Create subagents for Claude Code. USE WHEN user says 'create an agent', 'make an agent', 'add an agent', 'new agent for', 'build an agent', 'meta create agent', 'I need a specialist for', 'delegate this to', 'autonomous worker for'.
+description: Builder employee · Create subagents for Claude Code. USE WHEN user says 'create an agent', 'make an agent', 'add an agent', 'new agent for', 'build an agent', 'meta create agent', 'I need a specialist for', 'delegate this to', 'autonomous worker for'.
 ---
 
 # meta-create-agent — MCP loader

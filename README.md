@@ -29,6 +29,10 @@ That config file may also carry an `AIEB_MCP_URL` override (useful for testing a
 
 Older shell versions wrote an `aieb` entry with the key inline into each workspace's `.mcp.json`. `/setup-aieb` now removes that entry when it finds one — the plugin-level connector covers every folder, and a stale per-folder key would shadow the global one.
 
+## Menu slimming (v0.8.0)
+
+The visible skill menu shows only the ~17 skills a buyer deliberately STARTS a job with (front doors: onboard, business-x-ray, write, the meta-creates, …). The 13 chain gears (the writing-chain layers + business-os) carry `user-invocable: false` in their stub frontmatter, so they leave the menu while model-invocation and cross-skill chains keep working. Every stub description is also prefixed with its employee label ("Writing employee · …") so grouped identity survives on surfaces that ignore `user-invocable`. All of it is manifest-driven — `gen-stubs.mjs` reads `employee` + `menu` per skill from the server's `config/aieb-skills.manifest.json`; the source skills are untouched. The standing rule for future skills: visible = an entry point a buyer starts with; hidden = a gear primarily invoked BY another skill.
+
 ## What's in this shell
 
 Deliberately thin — no paid instruction bodies live here. What it ships:

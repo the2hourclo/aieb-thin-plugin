@@ -1,6 +1,7 @@
 ---
 name: invitation-lens
-description: The selling philosophy beneath every CTA, offer, and promotional line — invite, don't push; recognition, not manipulation — plus the premium framing shifts (reserve not "lock in", included resource not "bonus"). USE WHEN user says 'apply invitation lens', 'make this less salesy', 'this feels pushy', 'soften the sell', 'invitation framing', 'invite don't sell', 'less aggressive CTA', 'sounds too salesy', or when any selling/persuasion copy needs its relationship-to-the-reader checked. Do NOT use to WRITE a CTA from scratch (→ contextual-insights-cta) or a hook (→ write-hook) — this is the LENS those skills apply.
+description: Writing employee · The selling philosophy beneath every CTA, offer, and promotional line — invite, don't push; recognition, not manipulation — plus the premium framing shifts (reserve not "lock in", included resource not "bonus"). USE WHEN user says 'apply invitation lens', 'make this less salesy', 'this feels pushy', 'soften the sell', 'invitation framing', 'invite don't sell', 'less aggressive CTA', 'sounds too salesy', or when any selling/persuasion copy needs its relationship-to-the-reader checked. Do NOT use to WRITE a CTA from scratch (→ contextual-insights-cta) or a hook (→ write-hook) — this is the LENS those skills apply.
+user-invocable: false
 ---
 
 # invitation-lens — MCP loader

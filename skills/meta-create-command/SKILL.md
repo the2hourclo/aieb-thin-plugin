@@ -1,6 +1,6 @@
 ---
 name: meta-create-command
-description: Create slash commands for Claude Code. USE WHEN user says 'create a command', 'make a command', 'add a command', 'new slash command', 'build a command for', 'I need a shortcut for', 'make a quick action', 'automate this action'.
+description: Builder employee · Create slash commands for Claude Code. USE WHEN user says 'create a command', 'make a command', 'add a command', 'new slash command', 'build a command for', 'I need a shortcut for', 'make a quick action', 'automate this action'.
 ---
 
 # meta-create-command — MCP loader

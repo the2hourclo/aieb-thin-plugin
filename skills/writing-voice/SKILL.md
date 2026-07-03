@@ -1,9 +1,10 @@
 ---
 name: writing-voice
-description: Install your teaching voice. PRIMARY TEST — every sentence must sound like someone speaking and pointing at things, not a billboard or press release. Then point at named things, run What → Why → Takeaway on every teaching moment, and replace every abstract noun with a specific named thing. The Spoken-and-Pointing test runs FIRST on every sentence — only after that does the Circle Test, Verb Test, and Teaching Triad apply. USE WHEN user says 'voice check', 'install voice', 'install teaching voice', 'make it sound like me', 'scan for vagueness', 'point at things', 'name the gap', 'pointing voice', 'less announcy', 'sounds like a billboard', 'too staccato', when writing prose from a writing-logic scaffold, or to install the teaching-on-a-board stance on existing prose.
+description: Writing employee · Install your teaching voice. PRIMARY TEST — every sentence must sound like someone speaking and pointing at things, not a billboard or press release. Then point at named things, run What → Why → Takeaway on every teaching moment, and replace every abstract noun with a specific named thing. The Spoken-and-Pointing test runs FIRST on every sentence — only after that does the Circle Test, Verb Test, and Teaching Triad apply. USE WHEN user says 'voice check', 'install voice', 'install teaching voice', 'make it sound like me', 'scan for vagueness', 'point at things', 'name the gap', 'pointing voice', 'less announcy', 'sounds like a billboard', 'too staccato', when writing prose from a writing-logic scaffold, or to install the teaching-on-a-board stance on existing prose.
 context: fork
 agent: general-purpose
 model: sonnet
+user-invocable: false
 ---
 
 # writing-voice — MCP loader

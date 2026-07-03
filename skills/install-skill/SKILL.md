@@ -1,6 +1,6 @@
 ---
 name: install-skill
-description: Import and install skills from external sources into your workspace. USE WHEN user says 'install this skill', 'import a skill', 'add this skill pack', 'install from github', 'set up this skill', 'load skill from', 'bring in this skill'.
+description: Setup employee · Import and install skills from external sources into your workspace. USE WHEN user says 'install this skill', 'import a skill', 'add this skill pack', 'install from github', 'set up this skill', 'load skill from', 'bring in this skill'.
 disable-model-invocation: true
 ---
 

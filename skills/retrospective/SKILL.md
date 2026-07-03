@@ -1,6 +1,6 @@
 ---
 name: retrospective
-description: Capture learnings from skill usage and propose SKILL.md improvements. USE WHEN user says 'retrospective', 'this skill messed up', 'fix this skill', 'improve this skill', 'heal this skill', 'the skill got it wrong', 'update the skill', 'capture what went wrong', 'skill-level post-mortem', or when skill produces wrong output and user wants to patch its instructions.
+description: Builder employee · Capture learnings from skill usage and propose SKILL.md improvements. USE WHEN user says 'retrospective', 'this skill messed up', 'fix this skill', 'improve this skill', 'heal this skill', 'the skill got it wrong', 'update the skill', 'capture what went wrong', 'skill-level post-mortem', or when skill produces wrong output and user wants to patch its instructions.
 ---
 
 # retrospective — MCP loader

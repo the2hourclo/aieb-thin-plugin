@@ -1,6 +1,7 @@
 ---
 name: contextual-insights-cta
-description: Write CTAs that continue the conversation instead of interrupting it. Three-element structure (concept link, curiosity bridge, soft CTA) that makes the offer feel inevitable. USE WHEN user says 'write CTA', 'improve this CTA', 'CTA feels generic', 'make the CTA better', 'contextual CTA', 'the offer feels plugged in'.
+description: Writing employee · Write CTAs that continue the conversation instead of interrupting it. Three-element structure (concept link, curiosity bridge, soft CTA) that makes the offer feel inevitable. USE WHEN user says 'write CTA', 'improve this CTA', 'CTA feels generic', 'make the CTA better', 'contextual CTA', 'the offer feels plugged in'.
+user-invocable: false
 ---
 
 # contextual-insights-cta — MCP loader

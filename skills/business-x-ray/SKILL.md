@@ -1,6 +1,6 @@
 ---
 name: business-x-ray
-description: Map, diagnose, and optimize business operations through progressive visual analysis. Creates Business Maps, Bow-Tie Funnels, Process Swimlanes with 3-level drill-down, a System Connection Map, and a future-state Operating System Map that redraws the business as connected AI Employees (with MCP-availability mapping for every tool).
+description: Builder employee · Map, diagnose, and optimize business operations through progressive visual analysis. Creates Business Maps, Bow-Tie Funnels, Process Swimlanes with 3-level drill-down, a System Connection Map, and a future-state Operating System Map that redraws the business as connected AI Employees (with MCP-availability mapping for every tool).
 ---
 
 # business-x-ray — MCP loader
