@@ -16,6 +16,7 @@ Since v0.7.0 the connector is defined at the plugin level, so it exists in **eve
 
 - If `$ARGUMENTS` contains a key, use it.
 - Otherwise ask: "Paste your AI Employee Builder license key — it's in your Lemon Squeezy receipt email (the one you got when you bought)."
+- **If they say they don't have a key / haven't bought / came for the free map:** stop the setup — no key is needed for the free tier. Tell them: "You're already set — the **AI Employee Map** runs free on this connector, no key needed. Just say **'map my business'**. The full AI Employee Builder (create skills, agents, hooks, your build roadmap) comes with a plan: https://chiefleverageofficers.com/ai-employee-builders-invitation" and end there.
 - **Never repeat the full key back in chat.** If you need to refer to it, use only the last 4 characters.
 - Don't fuss about formatting — pasted quotes or spaces around the key are fine; the setup script cleans them off.
 
