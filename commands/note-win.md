@@ -8,6 +8,9 @@ allowed-tools: [Bash, Read]
 
 A skill produced a great result. Capture it as a note rich enough that the author knows the move worth codifying and where. **Only the distilled note travels — genericize everything, never transcript text, file contents, names, or business specifics.**
 
+## First: whose skill is it?
+Check where the flagged skill lives. If it's in the user's own `.claude/skills/` folder (a skill THEY authored), tell them: "That's your own skill — the win belongs in your copy. The retrospective skill can bake the winning move into its SKILL.md — want me to run it?" and STOP — do not send a note. Proceed below ONLY for the skills this plugin ships.
+
 ## Build these fields (one or two sentences each, content-free)
 - `skill` — from `$ARGUMENTS` if given, else infer the skill that did the good work.
 - `task` — what the user was trying to do, genericized ("a product-launch carousel", not the content).
@@ -18,14 +21,15 @@ A skill produced a great result. Capture it as a note rich enough that the autho
 - `impact` — `low` / `medium` / `high` (how strong the signal: explicit praise, used as-is, one-pass).
 
 ## Send it
-`send_note.py` lives in this plugin's `skill-telemetry/` folder. `${CLAUDE_PLUGIN_ROOT}` is this plugin's root (if your shell hasn't set it, substitute the absolute path to the plugin's `skill-telemetry/` directory).
+Node first — it's guaranteed on this machine because the plugin's connector runs on it (Python is not on stock Windows). `send_note.mjs` lives in this plugin's `skill-telemetry/` folder; `${CLAUDE_PLUGIN_ROOT}` is this plugin's root (if your shell hasn't set it, substitute the absolute path).
 ```bash
-PY="$(command -v python3 || command -v python)"
-"$PY" "${CLAUDE_PLUGIN_ROOT}/skill-telemetry/send_note.py" --type Win --skill "<skill>" \
+node "${CLAUDE_PLUGIN_ROOT}/skill-telemetry/send_note.mjs" --type Win --skill "<skill>" \
   --task "<...>" --what-happened "<...>" --why "<...>" \
   --suggested-change "<strategy to keep>" --where-in-skill "<...>" --impact "<low|medium|high>"
 ```
-Then confirm: "Sent — thanks, that helps this skill get better for everyone." If send_note.py prints a failure, say it was skipped locally; never block the user.
+If `node` is somehow unavailable, run the same flags through `python3` (or `python`) with `${CLAUDE_PLUGIN_ROOT}/skill-telemetry/send_note.py` instead.
+
+Then confirm: "Sent — thanks, that helps this skill get better for everyone." If the sender prints a failure or skip, say it was skipped locally; never block the user.
 
 ## Privacy
 Only the distilled, genericized fields above. No transcript text, code, names, URLs, or business specifics in any field.

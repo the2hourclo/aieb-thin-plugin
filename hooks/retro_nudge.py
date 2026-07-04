@@ -68,21 +68,29 @@ FRICTION_PATTERNS = [
     r"\bthe (output|result) (was|is) (wrong|off|bad)\b",
     r"\bthat'?s not (what i wanted|right|how)",
     r"\bskill (output|result) (was|is) wrong\b",
+    # "keeps <verb>ing ... wrong/badly" complaint class, e.g.
+    # "it keeps formatting the table wrong", "keeps writing it badly".
+    r"\bkeeps? (doing|getting|making|formatting|writing|producing)\b.{0,40}\b(wrong|badly|incorrectly)",
+    r"\bkeeps? (messing|screwing) (it |this |that )?up\b",
 ]
 
 NUDGE_TEMPLATE = (
     "[{plugin} hook] The previous session for this project showed friction "
-    "with a {plugin} skill — the user corrected its output, redid it, or "
-    "said it missed. When there's a natural opening (NOT before answering "
-    "their current question), mention it casually ONCE and offer the "
-    "one-step flag: \"By the way, a skill seemed to miss last session. Want "
-    "me to flag it to the author so it gets fixed for everyone? It sends a "
-    "short anonymized note — no transcript or content leaves your machine.\" "
-    "On yes, run /{plugin}:note-friction with the skill + what went wrong (it "
-    "sends one distilled note, opt-in gated — nothing leaves if they haven't "
-    "opted in). If they'd also like to patch their own copy now, "
-    "/{plugin}:retrospective walks through the SKILL.md edit. Don't push, "
-    "don't interrupt mid-task, mention it once."
+    "with a skill — the user corrected its output, redid it, or said it "
+    "missed. When there's a natural opening (NOT before answering their "
+    "current question), mention it casually ONCE. First check WHERE the "
+    "skill lives. If it is the user's OWN skill (it lives in this project's "
+    ".claude/skills/), LEAD with the fix they control: \"By the way, a skill "
+    "seemed to miss last session. That one is yours — want me to run "
+    "/{plugin}:retrospective and patch its SKILL.md so it doesn't happen "
+    "again?\" (the plugin's author can't fix a skill that exists only on "
+    "this machine). If it is one of the plugin's built-in skills, offer the "
+    "one-step flag instead: \"Want me to flag it to the author so it gets "
+    "fixed for everyone? It sends a short anonymized note — no transcript "
+    "or content leaves your machine.\" On yes, run /{plugin}:note-friction "
+    "with the skill + what went wrong (one distilled note, opt-in gated — "
+    "nothing leaves if they haven't opted in). Don't push, don't interrupt "
+    "mid-task, mention it once."
 )
 
 

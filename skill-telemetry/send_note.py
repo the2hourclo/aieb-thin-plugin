@@ -109,14 +109,17 @@ def main():
               "(form_action_url / field_map are placeholders) - skipping.")
         return 0
 
-    # --- Consent gate (opt-in). Once the consent flow has initialized
-    #     (.state/install.json exists), only send if the user granted. No file
-    #     => dev/creator mode, gated by config "enabled" only. ---
+    # --- Consent gate (opt-in, CLOSED by default). Nothing leaves the machine
+    #     unless the user explicitly granted consent. A MISSING install.json
+    #     means the consent flow never ran => NOT opted in => skip silently.
+    #     Creator/dev mode is an explicit env opt-in (CLO_TELEMETRY_DEV=1),
+    #     never the absence of a file. ---
     install = _read_json(os.path.join(os.path.expanduser("~"), ".clo-skill-telemetry", "install.json"))
-    if install and install.get("consent") != "granted":
-        print("[send_note] not opted in (consent=%s) - skipping."
-              % install.get("consent", "pending"))
-        return 0
+    if not _truthy(os.environ.get("CLO_TELEMETRY_DEV", "")):
+        if install.get("consent") != "granted":
+            print("[send_note] not opted in (consent=%s) - skipping."
+                  % install.get("consent", "absent"))
+            return 0
 
     # --- Assemble the note from whichever input was provided ---
     note = {}
