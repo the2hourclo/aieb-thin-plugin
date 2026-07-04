@@ -30,6 +30,8 @@ const MANIFEST_PATH =
   process.env.AIEB_MANIFEST_PATH ||
   "C:/Users/rkham/OneDrive/Desktop/Cursor Projects/operations/mcp-servers/aieb-gated-mcp/config/aieb-skills.manifest.json";
 const TIER_SRC = {
+  // The keyless free tier's skills are authored in the server repo (content-src).
+  free: path.dirname(MANIFEST_PATH).replace(/config$/, "content-src"),
   aieb:
     process.env.AIEB_SKILLS_SRC ||
     "C:/Users/rkham/OneDrive/Desktop/clo-os-plugins/plugins/ai-employee-builder/skills",
