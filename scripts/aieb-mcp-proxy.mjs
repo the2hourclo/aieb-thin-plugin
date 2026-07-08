@@ -24,6 +24,7 @@ try {
 
 const DEFAULT_MCP_URL = "https://aieb-gated-mcp.vercel.app/mcp";
 const DEFAULT_RENEW_URL = "https://chiefleverageofficer.com/aieb";
+const PROXY_VERSION = "0.12.0";
 
 const explicitInstanceId = process.env.AIEB_INSTANCE_ID || "";
 const stateDir = path.join(os.homedir(), ".aieb-mcp");
@@ -58,19 +59,29 @@ async function readJsonFile(filePath) {
   }
 }
 
-// License + URL resolution. Order for the key: env AIEB_LICENSE_KEY, then the
-// user-global ~/.aieb-mcp/config.json ({ "license_key": "…" }). The config file
-// may also carry an AIEB_MCP_URL override. Once a key is found the settings are
-// cached; while the key is missing we re-read the file on every message so a
-// /setup-aieb run mid-session gets picked up without a restart.
-let settingsCache = null;
-async function getSettings() {
-  if (settingsCache && settingsCache.licenseKey) return settingsCache;
+// A key that the activate_license tool validated THIS session. Top priority —
+// it is the only candidate the server has explicitly accepted.
+let sessionKey = "";
 
+// The activated session (key + instance id) currently used to talk to the
+// server. Reset to null whenever activation fails or a new key arrives, so the
+// next message re-resolves candidates — including re-reading config.json, which
+// means a /setup-aieb run or hand-edited file is picked up WITHOUT a restart.
+let session = null;
+
+// License + URL resolution. Key CANDIDATES in priority order: the key
+// activate_license validated this session, then env AIEB_LICENSE_KEY, then the
+// user-global ~/.aieb-mcp/config.json ({ "license_key": "…" }). The config file
+// may also carry an AIEB_MCP_URL override. Re-read on every resolve while no
+// session is established.
+async function resolveConfig() {
   const cfg = (await readJsonFile(configPath)) || {};
-  const envKey = cleanValue(process.env.AIEB_LICENSE_KEY);
-  const fileKey = cleanValue(cfg.license_key);
-  const licenseKey = isUsableKey(envKey) ? envKey : isUsableKey(fileKey) ? fileKey : "";
+
+  const candidates = [];
+  for (const raw of [sessionKey, process.env.AIEB_LICENSE_KEY, cfg.license_key]) {
+    const key = cleanValue(raw);
+    if (isUsableKey(key) && !candidates.includes(key)) candidates.push(key);
+  }
 
   const remoteUrl =
     cleanValue(process.env.AIEB_MCP_URL) ||
@@ -81,8 +92,7 @@ async function getSettings() {
     cleanValue(cfg.AIEB_ACTIVATE_URL) ||
     remoteUrl.replace(/\/mcp\/?$/, "/activate");
 
-  settingsCache = { licenseKey, remoteUrl, activateUrl };
-  return settingsCache;
+  return { candidates, remoteUrl, activateUrl };
 }
 
 function fingerprint(value) {
@@ -98,17 +108,14 @@ async function writeState(state) {
   await fs.writeFile(statePath, JSON.stringify(state, null, 2), "utf8");
 }
 
-const NO_KEY_MESSAGE =
-  "No AI Employee Builder license key is set up on this machine yet. " +
-  "Run /setup-aieb once (your license key is in your Lemon Squeezy receipt email) " +
-  "and the connector will work in every folder.";
-
 function networkError(error) {
   const cause = error?.cause ? error.cause.code || error.cause.message || String(error.cause) : "";
-  return new Error(
+  const wrapped = new Error(
     "Can't reach the AI Employee Builder server — check your internet, VPN, or firewall, " +
       `then try again. (${error.message}${cause ? ": " + cause : ""})`
   );
+  wrapped.isNetwork = true;
+  return wrapped;
 }
 
 // A key the server REJECTED is remembered for 5 minutes so a broken key doesn't
@@ -120,9 +127,7 @@ const ACTIVATION_FAILURE_TTL_MS = 5 * 60 * 1000;
 const activationFailures = new Map(); // key fingerprint -> { message, until }
 const activationInFlight = new Map(); // key fingerprint -> Promise<instance_id>
 
-async function getInstanceId(settings) {
-  const { licenseKey, activateUrl } = settings;
-  if (!licenseKey) throw new Error(NO_KEY_MESSAGE);
+async function getInstanceId(licenseKey, activateUrl) {
   if (explicitInstanceId) return explicitInstanceId;
 
   const key = fingerprint(licenseKey);
@@ -182,13 +187,14 @@ async function activate(key, licenseKey, activateUrl) {
 
   if (response.status >= 400 && response.status < 500) {
     // The server looked at the key and said no — relay its reason AND the
-    // renewal link it sent back.
+    // renewal link it sent back, plus the in-chat fix.
     const reason = payload.reason || "the license key wasn't accepted.";
     const renewUrl = payload.renew_url || DEFAULT_RENEW_URL;
     const message =
       `Your AI Employee Builder license wasn't accepted — ${reason} ` +
-      `Double-check the key in your Lemon Squeezy receipt email and run /setup-aieb to re-enter it, ` +
-      `or renew/manage your license here: ${renewUrl}`;
+      "Ask the user to paste the license key from their Lemon Squeezy receipt email " +
+      "here in chat, then call the activate_license tool with it (takes effect " +
+      `immediately, no restart). If the subscription lapsed, renew/manage it here: ${renewUrl}`;
     activationFailures.set(key, { message, until: Date.now() + ACTIVATION_FAILURE_TTL_MS });
     throw new Error(message);
   }
@@ -200,8 +206,40 @@ async function activate(key, licenseKey, activateUrl) {
   );
 }
 
+// Resolve the session used to talk to the server. Tries each key candidate in
+// priority order until one activates; a network failure aborts immediately (it
+// is not a verdict on any key). With NO candidates the session is KEYLESS —
+// requests forward without Authorization so the server's free tier answers and
+// its own guidance (free map vs broken setup vs not-a-member) takes over.
+async function ensureSession() {
+  if (session) return session;
+
+  const { candidates, remoteUrl, activateUrl } = await resolveConfig();
+
+  if (!candidates.length) {
+    return { licenseKey: "", instanceId: "", remoteUrl };
+  }
+
+  let lastError = null;
+  for (const licenseKey of candidates) {
+    try {
+      const instanceId = await getInstanceId(licenseKey, activateUrl);
+      session = { licenseKey, instanceId, remoteUrl };
+      return session;
+    } catch (error) {
+      if (error.isNetwork) throw error;
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 function writeMessage(message) {
   process.stdout.write(`${JSON.stringify(message)}\n`);
+}
+
+function result(id, value) {
+  return { jsonrpc: "2.0", id, result: value };
 }
 
 function errorResponse(id, code, message) {
@@ -215,19 +253,22 @@ function errorResponse(id, code, message) {
   };
 }
 
+function toolResult(id, text, isError) {
+  return result(id, { content: [{ type: "text", text }], isError: Boolean(isError) });
+}
+
 async function forward(message) {
-  const settings = await getSettings();
-  const instanceId = await getInstanceId(settings);
+  const { licenseKey, instanceId, remoteUrl } = await ensureSession();
   const headers = {
     "Content-Type": "application/json",
-    Accept: "application/json, text/event-stream",
-    Authorization: `Bearer ${settings.licenseKey}`
+    Accept: "application/json, text/event-stream"
   };
+  if (licenseKey) headers.Authorization = `Bearer ${licenseKey}`;
   if (instanceId) headers["X-AIEB-Instance-ID"] = instanceId;
 
   let response;
   try {
-    response = await fetch(settings.remoteUrl, {
+    response = await fetch(remoteUrl, {
       method: "POST",
       headers,
       body: JSON.stringify(message)
@@ -246,6 +287,123 @@ async function forward(message) {
   }
 }
 
+// --- Local tools -----------------------------------------------------------
+
+// The in-chat license setup. Handled entirely by THIS proxy (which runs on the
+// buyer's real machine), so it works from sandboxed surfaces (Cowork, Desktop)
+// where Claude's file tools can't reach the home directory. This is the primary
+// setup path on every surface: the buyer pastes their key in chat, Claude calls
+// this tool, done — no file editing, no restart.
+const ACTIVATE_TOOL = {
+  name: "activate_license",
+  description:
+    "Set up or fix the AI Employee Builder license on this machine. Call this whenever the user " +
+    "provides their AIEB license key (it's in their Lemon Squeezy receipt email) — first-time setup, " +
+    "a replaced key, or after any AIEB call failed with a license problem. Validates the key with the " +
+    "server, saves it user-globally, and takes effect immediately — no restart, no file editing. " +
+    "Never echo the full key back in chat; refer to it by its last 4 characters only.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      license_key: {
+        type: "string",
+        description: "The buyer's AIEB license key exactly as pasted (stray quotes/spaces are fine)."
+      }
+    },
+    required: ["license_key"]
+  }
+};
+
+// Offline fallback for tools/list — the live server catalog is preferred, this
+// is the floor that keeps the connector usable when the server is unreachable.
+const GET_SKILL_FALLBACK_TOOL = {
+  name: "get_skill",
+  description:
+    "Fetch and then FOLLOW an AI Employee Builder skill — its SKILL.md plus any workflows/references " +
+    "it names. Call this whenever the user wants an AIEB job (business x-ray, create a skill/agent/hook/" +
+    "command/MCP/plugin, onboarding, roadmap); pass the matching skill_id with path SKILL.md, then do " +
+    "what it returns. Path defaults to SKILL.md; pass workflow/reference paths to fetch deeper files.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      skill_id: { type: "string", description: "AIEB skill id, e.g. meta-create-skill or business-x-ray." },
+      path: { type: "string", description: "Optional file path inside the skill. Defaults to SKILL.md." },
+      task_context: { type: "string", description: "Optional short description of the task." }
+    },
+    required: ["skill_id"]
+  }
+};
+
+// Always present the local activate_license tool alongside whatever catalog is
+// in play (live or fallback) — it must be callable precisely when the license
+// is broken, which is exactly when the live catalog may not load.
+function withLocalTools(tools) {
+  const list = Array.isArray(tools) && tools.length ? tools : [GET_SKILL_FALLBACK_TOOL];
+  const filtered = list.filter((t) => t?.name !== ACTIVATE_TOOL.name);
+  return [...filtered, ACTIVATE_TOOL];
+}
+
+async function handleActivateLicense(id, args) {
+  const key = cleanValue(args?.license_key);
+  if (!isUsableKey(key)) {
+    return toolResult(
+      id,
+      "That doesn't look like a license key. Ask the user to copy the key from their Lemon Squeezy " +
+        "receipt email (the 'License key' line) and paste it here, then call this tool again.",
+      true
+    );
+  }
+
+  // An explicit attempt deserves a fresh verdict — drop any cached rejection.
+  activationFailures.delete(fingerprint(key));
+
+  try {
+    const { activateUrl } = await resolveConfig();
+    await getInstanceId(key, activateUrl);
+
+    // The server accepted the key — persist it user-globally so every folder
+    // and every future session finds it, and adopt it right now.
+    const cfg = (await readJsonFile(configPath)) || {};
+    cfg.license_key = key;
+    cfg.saved_at = new Date().toISOString();
+    await fs.mkdir(stateDir, { recursive: true });
+    await fs.writeFile(configPath, JSON.stringify(cfg, null, 2), "utf8");
+
+    sessionKey = key;
+    session = null; // rebuild with the new key on the next call
+
+    return toolResult(
+      id,
+      "License activated and saved. AI Employee Builder is ready on this machine — every folder, " +
+        "no restart needed. Continue with the user's original task now (re-run the call that failed, " +
+        "if there was one)."
+    );
+  } catch (error) {
+    return toolResult(id, error.message, true);
+  }
+}
+
+// How long we wait for the server's live catalog before falling back to the
+// local floor. Bounded so a slow/down server can never stall the MCP handshake.
+const TOOLS_LIST_TIMEOUT_MS = 2500;
+
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
+}
+
+// Ask the licensed server for its live tool catalog. Returns the tools array,
+// or null on any failure (timeout, network, invalid license) so the caller can
+// fall back locally. This is what lets catalog changes ship WITHOUT a reinstall.
+async function fetchRemoteTools(message) {
+  try {
+    const payload = await forward(message);
+    const tools = payload?.result?.tools;
+    return Array.isArray(tools) && tools.length ? tools : null;
+  } catch {
+    return null;
+  }
+}
+
 const rl = readline.createInterface({
   input: process.stdin,
   crlfDelay: Infinity
@@ -261,20 +419,52 @@ rl.on("line", async (line) => {
     return;
   }
 
+  const { id, method } = message;
+
+  // --- Answer the handshake LOCALLY so attaching never depends on the network
+  // or on a license being set up yet ---
+  if (method === "initialize") {
+    writeMessage(
+      result(id, {
+        protocolVersion: "2025-06-18",
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: "aieb", version: PROXY_VERSION }
+      })
+    );
+    return;
+  }
+  if (typeof method === "string" && method.startsWith("notifications/")) {
+    return; // notifications get no response
+  }
+  if (method === "tools/list") {
+    const remoteTools = await withTimeout(fetchRemoteTools(message), TOOLS_LIST_TIMEOUT_MS);
+    writeMessage(result(id, { tools: withLocalTools(remoteTools) }));
+    return;
+  }
+  if (method === "tools/call" && message.params?.name === ACTIVATE_TOOL.name) {
+    writeMessage(await handleActivateLicense(id, message.params?.arguments));
+    return;
+  }
+  if (method === undefined && id === undefined) {
+    return;
+  }
+
   try {
     const response = await forward(message);
     if (response) writeMessage(response);
   } catch (error) {
     console.error(`AIEB MCP proxy error: ${error.message}`);
-    writeMessage(errorResponse(message.id, -32000, error.message));
+    if (message.id !== undefined) {
+      writeMessage(errorResponse(message.id, -32000, error.message));
+    }
   }
 });
 
-getSettings().then(
-  (settings) =>
+resolveConfig().then(
+  ({ candidates, remoteUrl }) =>
     console.error(
-      `AIEB MCP proxy ready (node ${process.version})${caNote} -> ${settings.remoteUrl}` +
-        (settings.licenseKey ? "" : " [no license key yet — run /setup-aieb]")
+      `AIEB MCP proxy ready (node ${process.version})${caNote} -> ${remoteUrl}` +
+        (candidates.length ? "" : " [no license key yet — paste it in chat and Claude will activate it]")
     ),
   () => console.error(`AIEB MCP proxy ready (node ${process.version})${caNote}`)
 );
