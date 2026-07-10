@@ -32,6 +32,14 @@ When the user says `done`, `connected`, or equivalent, call the AIEB connector t
 
 Call `get_skill` with `skill_id: meta-create-skill`, `path: SKILL.md`. If it succeeds, continue the user's original task immediately.
 
+## Step 4 — Offer the workspace map (once, right after first successful connection)
+
+The first time verification succeeds on this machine, offer once, casually:
+
+> Want me to set up this workspace so I always know where your assets live and which employee handles what? Takes a minute — I add one small managed section to this project's CLAUDE.md (the file stays yours; my edits stay inside the marked block), and it makes every future request route better.
+
+If yes: fetch `get_skill` with `skill_id: onboard`, `path: workflows/scaffold-workspace.md` and apply ONLY the managed CLAUDE.md block from it (they can run full onboarding later by saying "onboard me"). If no: accept gracefully — `check-setup` can add it any time.
+
 ## Migration behavior
 
 Existing users with a legacy saved Lemon Squeezy key continue working during migration. Once secure browser activation succeeds, the proxy deletes the saved key and keeps only the revocable AIEB device token.

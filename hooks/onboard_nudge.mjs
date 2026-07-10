@@ -95,7 +95,28 @@ function bumpCount(counterFile, cwd, newCount) {
   }
 }
 
-const NUDGE =
+// Onboarding is a PAID skill: nudging "say onboard me" before the license is
+// connected dead-ends the buyer's very first action on the license wall
+// (observed in the 2026-07-10 journey audit). So the nudge checks activation
+// state and, when unconnected, leads with /setup-aieb instead.
+function isActivated() {
+  // Any non-trivial state file in ~/.aieb-mcp counts (legacy config.json /
+  // activation.json, or the device-flow token store) — robust to the exact
+  // filename the proxy uses across versions.
+  try {
+    const home = process.env.USERPROFILE || process.env.HOME || os.homedir();
+    const dir = path.join(home, ".aieb-mcp");
+    if (!fs.existsSync(dir)) return false;
+    return fs
+      .readdirSync(dir)
+      .some((f) => f.endsWith(".json") && !f.startsWith("pending") && fs.statSync(path.join(dir, f)).size > 2);
+  } catch {
+    // unreadable state = treat as not activated; the setup path is always safe
+  }
+  return false;
+}
+
+const NUDGE_ACTIVATED =
   `[${PLUGIN_NAME} hook] This looks like a fresh workspace for the ai-employee-builder ` +
   "plugin — onboarding hasn't run here and no skills have been authored yet. When " +
   "there's a natural opening (after acknowledging the user's actual first request, " +
@@ -106,6 +127,17 @@ const NUDGE =
   "into an existing project, so don't push a folder scaffold on them — if the user " +
   "says no, accept it gracefully and stay silent. If their first message is already " +
   "about onboarding, just run it — don't double-offer.";
+
+const NUDGE_NOT_ACTIVATED =
+  `[${PLUGIN_NAME} hook] The ai-employee-builder plugin is installed but no license is ` +
+  "connected on this machine yet, so paid skills (including onboarding) would hit the " +
+  "license wall. When there's a natural opening (after acknowledging the user's actual " +
+  'first request, not instead of it), offer ONCE, casually: "I see AI Employee Builder ' +
+  "is installed but not connected yet — run /setup-aieb to link your license (about 2 " +
+  "minutes; members get the key with their purchase). After that, say 'onboard me' and " +
+  "I'll set up your workspace and first skill. And if you came for the free AI Employee " +
+  "Map, that works right now with no key — just say 'map my business'.\" If the user " +
+  "says no, accept it gracefully and stay silent.";
 
 async function readStdin() {
   if (process.stdin.isTTY) return "";
@@ -146,15 +178,16 @@ async function main() {
   }
 
   bumpCount(counterFile, cwd, count + 1);
+  const activated = isActivated();
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "SessionStart",
-        additionalContext: NUDGE
+        additionalContext: activated ? NUDGE_ACTIVATED : NUDGE_NOT_ACTIVATED
       }
     })
   );
-  logEvent("nudge-emitted", { count: count + 1 });
+  logEvent("nudge-emitted", { count: count + 1, activated });
 }
 
 main()
