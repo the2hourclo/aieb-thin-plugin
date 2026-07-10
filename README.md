@@ -1,58 +1,34 @@
 # AI Employee Builder Public Shell
 
-This plugin intentionally contains no paid AIEB instruction bodies.
+This plugin is intentionally thin: it contains no paid AIEB instruction bodies. It gives Claude a local connector and routing stubs; licensed skill instructions are fetched from the hosted AIEB MCP at runtime.
 
-It gives buyers a public AI Employee Builder plugin they can install in Claude Code. The plugin ships the connector to the hosted `aieb` MCP server; the server validates the buyer's LemonSqueezy license and returns paid skill instructions at runtime through `get_skill`.
+- MCP: `https://aieb-gated-mcp.vercel.app/mcp`
+- Secure activation API: `https://aieb-gated-mcp.vercel.app/device/*`
+- Customer activation page: `https://the2hourclo.github.io/clo-courses/clo-course/get-access-aieb.html`
 
-The hosted production MCP is:
+## Secure connection model (v0.13.0)
 
-```text
-https://aieb-gated-mcp.vercel.app/mcp
-```
+The connector is defined at plugin level, so it exists in every folder the buyer opens. Setup is a device flow:
 
-The activation endpoint is:
+1. `/setup-aieb` calls `connect_aieb` with no secrets.
+2. The connector creates a short-lived, one-time activation code and returns the course-page URL.
+3. The buyer enters the Lemon Squeezy key on that HTTPS page, never in Claude or chat history.
+4. After the buyer says `done`, Claude calls `finish_aieb_connection`.
+5. The connector exchanges its private verifier for an opaque `aieb_v1_…` device token and stores that token in `~/.aieb-mcp/config.json` with user-only file permissions where supported.
 
-```text
-https://aieb-gated-mcp.vercel.app/activate
-```
+The license key is used once by the activation service and is not stored by the plugin or written to product analytics. The server stores a hash of the device token, not the bearer token itself. Activation links expire and can be consumed only once.
 
-## The global key model (v0.7.0)
+Old `AIEB_LICENSE_KEY`, `config.json` license-key, and `activation.json` installations remain readable only for migration. A successful secure connection removes `license_key` from the user config. The advertised `activate_license` tool is a retired compatibility shim that redirects Claude to `connect_aieb` and accepts no key.
 
-The connector is defined at the **plugin level** (`.mcp.json` at the plugin root, pointing at `scripts/aieb-mcp-proxy.mjs` via `${CLAUDE_PLUGIN_ROOT}`), so it exists in **every folder** the buyer opens — no per-workspace setup.
+## What ships
 
-The license key lives **user-globally**, never per-folder. The connector resolves it in this order:
+- `skills/`: generated auto-routing loaders. Each loader fetches the real `SKILL.md` and referenced files with `get_skill`. Regenerate with `node scripts/gen-stubs.mjs`.
+- `scripts/aieb-mcp-proxy.mjs`: local stdio connector, secure device-flow tools, and remote MCP forwarding.
+- `commands/setup-aieb.md`: the two-action buyer setup flow.
+- `hooks/`: onboarding, roadmap, update, and retrospective nudges.
+- `skill-telemetry/`: explicit one-note feedback only; no automatic transcript capture or consent prompt.
 
-1. `AIEB_LICENSE_KEY` environment variable (if set for the process),
-2. `~/.aieb-mcp/config.json` → `{ "license_key": "…" }` (written once by `/setup-aieb`).
-
-That config file may also carry an `AIEB_MCP_URL` override (useful for testing against a local server). Quotes and stray whitespace around any pasted value are stripped wherever it's read, and leftover `PASTE_…` placeholders are ignored. Activation state (the LemonSqueezy instance id per key) lives next to it in `~/.aieb-mcp/activation.json`.
-
-Older shell versions wrote an `aieb` entry with the key inline into each workspace's `.mcp.json`. `/setup-aieb` now removes that entry when it finds one — the plugin-level connector covers every folder, and a stale per-folder key would shadow the global one.
-
-## Menu slimming (v0.8.0)
-
-The visible skill menu shows only the ~17 skills a buyer deliberately STARTS a job with (front doors: onboard, business-x-ray, write, the meta-creates, …). The 13 chain gears (the writing-chain layers + business-os) carry `user-invocable: false` in their stub frontmatter, so they leave the menu while model-invocation and cross-skill chains keep working. Every stub description is also prefixed with its employee label ("Writing employee · …") so grouped identity survives on surfaces that ignore `user-invocable`. All of it is manifest-driven — `gen-stubs.mjs` reads `employee` + `menu` per skill from the server's `config/aieb-skills.manifest.json`; the source skills are untouched. The standing rule for future skills: visible = an entry point a buyer starts with; hidden = a gear primarily invoked BY another skill.
-
-## What's in this shell
-
-Deliberately thin — no paid instruction bodies live here. What it ships:
-
-- **`skills/` — auto-routing stubs.** One tiny `SKILL.md` per AIEB skill: real frontmatter (so Claude auto-routes on the user's phrasing exactly like the full skill) wrapped around a loader that fetches the real instructions, workflows, and references from the `aieb` MCP via `get_skill` at runtime. If the connector is missing on the machine, the loader tells the user the repair line — run `/setup-aieb`, then `/reload-plugins` — instead of failing silently. Regenerate with `node scripts/gen-stubs.mjs`.
-- **`hooks/` — the proactive layer.** `onboard_nudge` offers onboarding on a fresh workspace; `roadmap_nudge` offers the next build step once onboarding is done; `update_ping` tells the buyer when this *shell* (not the content) needs updating, by checking the MCP's `/version` — and also when the workspace's managed CLAUDE.md block is behind the current template (`claude_md_template` in `/version` vs the `v=N` stamp in the managed block; the nudge is "say 'check my setup'"); `retro_nudge.py` suggests flagging a skill that misfired.
-- **`skill-telemetry/` — opt-in feedback.** Captures which skills ran and lets buyers send a distilled, anonymized friction/win note to the author (consent-gated; nothing leaves without opt-in).
-- **`commands/`** — `/setup-aieb`, `/note-friction`, `/note-win`.
-- **`scripts/aieb-mcp-proxy.mjs`** — the licensed connector (stdio → hosted MCP).
-- **`scripts/setup-license.mjs`** — the one-shot setup used by `/setup-aieb`: sanitizes the pasted key, validates it against `/activate`, writes `~/.aieb-mcp/config.json`, and verifies end to end with a real `get_skill` fetch. Prints only the last 4 characters of the key, never the full key.
-
-### Hook runtime: Node first, Python fallback
-
-The three nudge hooks are **Node scripts** (`.mjs`) because Node is guaranteed on every buyer machine — the connector itself runs on it — while Python is missing on stock Windows. `hooks/hooks.json` chains each one as:
-
-```text
-node hooks/<name>.mjs || python3 hooks/<name>.py || python hooks/<name>.py || true
-```
-
-The legacy `.py` files stay in place purely as a belt-and-suspenders fallback for machines where `node` somehow isn't on PATH; they are frozen at the pre-0.7.0 behavior (no workspace-stamp nudge). `retro_nudge.py` and the telemetry hooks remain Python-only for now. Every hook is fail-silent: any error exits 0 and never blocks a session.
+No transcript, prompt, uploaded file, memory, or customer business data is stored in this shell or sent as analytics. Business content stays in the buyer's local workspace. Server events are limited to pseudonymous member/device references, skill IDs, result classes, versions, latency, and estimated token counts.
 
 ## Install
 
@@ -60,19 +36,14 @@ The legacy `.py` files stay in place purely as a belt-and-suspenders fallback fo
 /plugin marketplace add https://github.com/the2hourclo/aieb-thin-plugin
 /plugin install ai-employee-builder@aieb-thin-plugin
 /reload-plugins
-```
-
-Then run the setup command once:
-
-```text
 /setup-aieb
 ```
 
-The command asks for the buyer's Lemon Squeezy license key (it's in the purchase receipt email), validates it immediately against `/activate`, saves it user-globally, migrates away any old per-folder config, and finishes with a verification fetch (`get_skill` → `meta-create-skill` / `SKILL.md`). One run, every folder.
+The buyer follows the secure link, clicks **Connect this device**, returns to Claude, and says `done`. No restart is required after the connection completes.
 
-## Connector Config Shape
+## Connector config
 
-The plugin root `.mcp.json` (ships with the plugin — buyers never edit it):
+The plugin root `.mcp.json` ships with:
 
 ```json
 {
@@ -80,72 +51,45 @@ The plugin root `.mcp.json` (ships with the plugin — buyers never edit it):
     "aieb": {
       "type": "stdio",
       "command": "node",
-      "args": [
-        "${CLAUDE_PLUGIN_ROOT}/scripts/aieb-mcp-proxy.mjs"
-      ]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/aieb-mcp-proxy.mjs"]
     }
   }
 }
 ```
 
-No key in the config — the connector finds it globally (see the key model above). `~/.aieb-mcp/config.json` written by `/setup-aieb`:
+After secure setup, `~/.aieb-mcp/config.json` resembles:
 
 ```json
 {
-  "license_key": "buyer-license-key",
-  "saved_at": "2026-07-03T00:00:00.000Z"
+  "installation_id": "local-random-uuid",
+  "device_token": "aieb_v1_opaque-token",
+  "device_ref": "pseudonymous-device-reference",
+  "connected_at": "2026-07-10T00:00:00.000Z"
 }
 ```
 
-If the MCP client supports HTTP headers directly, the stdio connector can be skipped in favor of a remote HTTP server with:
+Buyers never hand-edit this file. `AIEB_MCP_URL`, `AIEB_DEVICE_START_URL`, and `AIEB_DEVICE_STATUS_URL` remain available as developer/testing overrides.
 
-```json
-{
-  "type": "http",
-  "url": "https://aieb-gated-mcp.vercel.app/mcp",
-  "headers": {
-    "Authorization": "Bearer buyer-license-key",
-    "X-AIEB-Instance-ID": "license-instance-id-from-activation"
-  }
-}
-```
+## Runtime and revocation
 
-## Runtime Contract
+Normal skill requests use the device token as the MCP bearer credential. The server resolves it to a stored entitlement before returning paid instructions.
 
-Once the MCP is connected, the client calls:
+- A Lemon Squeezy cancellation webhook sets the entitlement to `cancelled` immediately, even if Lemon Squeezy would otherwise leave the subscription usable until its billing-period end.
+- Cancelled, expired, unpaid, refunded, or disabled entitlements receive no paid content.
+- Resume/renew webhooks restore the entitlement without reinstalling the plugin.
+- Rate limits are independent for IP, device/license identity, activation code, and unauthenticated traffic.
+- The connector uses the operating system certificate store and bounded network timeouts.
 
-```json
-{
-  "tool": "get_skill",
-  "arguments": {
-    "skill_id": "meta-create-skill",
-    "path": "SKILL.md",
-    "task_context": "short user task summary"
-  }
-}
-```
+## Repair flow
 
-The returned instruction text is the paid body. If the license is inactive, the server returns a renewal/help response instead.
+| Symptom | Buyer-safe fix |
+|---|---|
+| Connector missing | Install/update the plugin, reload, then run `/setup-aieb`. |
+| Unauthorized or device token revoked | Run `/setup-aieb` and use the secure page. Never paste a key into chat. |
+| Subscription cancelled/lapsed | Resume or renew in Lemon Squeezy, then reconnect if needed. |
+| Activation link expired | Run `/setup-aieb` again for a fresh link. |
+| Network/VPN problem | Fix connectivity and retry; a network error is never presented as a rejected subscription. |
 
-The connector activates the buyer's license once through `/activate`, stores the LemonSqueezy instance ID in `~/.aieb-mcp/activation.json`, and sends that instance ID with every MCP request. This prevents a copied license key from working on unlimited machines. Hardening in v0.7.0:
+## Publishing
 
-- **OS certificate trust** — the connector loads the system CA store in code, so TLS-inspecting antivirus/VPN/corporate proxies don't break HTTPS.
-- **Failure caching** — a key the server *rejects* is remembered for 5 minutes (and concurrent messages share one in-flight activation), so a broken key can't hammer `/activate` on every message. Network blips are never cached.
-- **Honest errors** — an activation rejection relays the server's `reason` and its `renew_url`; a transport failure says "can't reach the server — check internet/VPN". The two are never conflated.
-
-## Repair flow (buyer-facing)
-
-| Symptom | What the buyer sees | Fix |
-|---|---|---|
-| Connector missing on this machine | Any skill stub says: "The AI Employee Builder connector isn't set up on this machine yet — run /setup-aieb (your license key is in your Lemon Squeezy receipt email), then /reload-plugins." | `/setup-aieb` → `/reload-plugins` |
-| Key rejected (expired/cancelled/wrong product) | The server's reason + the renewal link, and a pointer to the receipt email | Re-paste the right key via `/setup-aieb`, or renew |
-| No internet / VPN blocking | "Can't reach the AI Employee Builder server — check your internet, VPN, or firewall" | Fix the connection; nothing to reconfigure |
-| Workspace map outdated | "Your AI Employee workspace map is a version behind — say 'check my setup' to refresh it." | Say "check my setup" |
-
-## Buyer Install Shape
-
-The plugin is a free/public shell. Buyers install the shell, run `/setup-aieb` once, paste their LemonSqueezy key, and the connector works in every folder from then on.
-
-Skill updates are published by updating the MCP server content and redeploying Vercel. Buyers do not reinstall the plugin unless the local shell changes.
-
-When the shell itself changes, bump the plugin version in both `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, and set `AIEB_PLUGIN_LATEST_VERSION` (and `AIEB_PLUGIN_MIN_VERSION` for a hard floor) on the MCP. The `update_ping` hook reads the MCP's `/version` endpoint and nudges buyers to reinstall only when their local shell is behind. When the server also reports `claude_md_template`, the same hook compares it against the workspace's managed-block stamp and nudges a gentle "check my setup" refresh when the workspace map is behind.
+Paid skill content updates ship through the MCP server and require no shell reinstall. When the shell changes, bump both Claude manifests and the Codex manifest, update `AIEB_PLUGIN_LATEST_VERSION` on the server, test the secure activation flow, then publish the plugin.

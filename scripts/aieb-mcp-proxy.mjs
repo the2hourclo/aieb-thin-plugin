@@ -24,12 +24,13 @@ try {
 
 const DEFAULT_MCP_URL = "https://aieb-gated-mcp.vercel.app/mcp";
 const DEFAULT_RENEW_URL = "https://chiefleverageofficer.com/aieb";
-const PROXY_VERSION = "0.12.0";
+const PROXY_VERSION = "0.13.0";
 
 const explicitInstanceId = process.env.AIEB_INSTANCE_ID || "";
 const stateDir = path.join(os.homedir(), ".aieb-mcp");
 const statePath = path.join(stateDir, "activation.json");
 const configPath = path.join(stateDir, "config.json");
+const pendingActivationPath = path.join(stateDir, "pending-activation.json");
 
 // Strip whitespace and any surrounding quotes a buyer pasted along with a value
 // (keys arrive as  "ABCD-…" ,  'ABCD-…' , or with stray spaces).
@@ -59,9 +60,22 @@ async function readJsonFile(filePath) {
   }
 }
 
-// A key that the activate_license tool validated THIS session. Top priority —
-// it is the only candidate the server has explicitly accepted.
+async function writeJsonFile(filePath, value) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const temporary = `${filePath}.${process.pid}.${crypto.randomBytes(4).toString("hex")}.tmp`;
+  await fs.writeFile(temporary, JSON.stringify(value, null, 2), { encoding: "utf8", mode: 0o600 });
+  await fs.rename(temporary, filePath);
+  try {
+    await fs.chmod(filePath, 0o600);
+  } catch {
+    // Windows ACLs do not map to POSIX modes; inherited user-home ACLs apply.
+  }
+}
+
+// Legacy key support remains only to migrate buyers from pre-0.13 shells.
+// New connections always use an opaque device token.
 let sessionKey = "";
+let sessionDeviceToken = "";
 
 // The activated session (key + instance id) currently used to talk to the
 // server. Reset to null whenever activation fails or a new key arrives, so the
@@ -69,13 +83,15 @@ let sessionKey = "";
 // means a /setup-aieb run or hand-edited file is picked up WITHOUT a restart.
 let session = null;
 
-// License + URL resolution. Key CANDIDATES in priority order: the key
-// activate_license validated this session, then env AIEB_LICENSE_KEY, then the
-// user-global ~/.aieb-mcp/config.json ({ "license_key": "…" }). The config file
-// may also carry an AIEB_MCP_URL override. Re-read on every resolve while no
-// session is established.
+// Device-token + URL resolution. A legacy environment/config key may be read
+// for backwards compatibility, but connect_aieb never writes one. Re-read on
+// every resolve while no session is established.
 async function resolveConfig() {
   const cfg = (await readJsonFile(configPath)) || {};
+
+  const deviceToken = cleanValue(
+    sessionDeviceToken || process.env.AIEB_DEVICE_TOKEN || cfg.device_token
+  );
 
   const candidates = [];
   for (const raw of [sessionKey, process.env.AIEB_LICENSE_KEY, cfg.license_key]) {
@@ -92,7 +108,16 @@ async function resolveConfig() {
     cleanValue(cfg.AIEB_ACTIVATE_URL) ||
     remoteUrl.replace(/\/mcp\/?$/, "/activate");
 
-  return { candidates, remoteUrl, activateUrl };
+  const deviceStartUrl =
+    cleanValue(process.env.AIEB_DEVICE_START_URL) ||
+    cleanValue(cfg.AIEB_DEVICE_START_URL) ||
+    remoteUrl.replace(/\/mcp\/?$/, "/device/start");
+  const deviceStatusUrl =
+    cleanValue(process.env.AIEB_DEVICE_STATUS_URL) ||
+    cleanValue(cfg.AIEB_DEVICE_STATUS_URL) ||
+    remoteUrl.replace(/\/mcp\/?$/, "/device/status");
+
+  return { candidates, deviceToken, remoteUrl, activateUrl, deviceStartUrl, deviceStatusUrl, cfg };
 }
 
 function fingerprint(value) {
@@ -104,8 +129,7 @@ async function readState() {
 }
 
 async function writeState(state) {
-  await fs.mkdir(stateDir, { recursive: true });
-  await fs.writeFile(statePath, JSON.stringify(state, null, 2), "utf8");
+  await writeJsonFile(statePath, state);
 }
 
 function networkError(error) {
@@ -187,14 +211,13 @@ async function activate(key, licenseKey, activateUrl) {
 
   if (response.status >= 400 && response.status < 500) {
     // The server looked at the key and said no — relay its reason AND the
-    // renewal link it sent back, plus the in-chat fix.
+    // renewal link it sent back, plus the secure reconnect fix.
     const reason = payload.reason || "the license key wasn't accepted.";
     const renewUrl = payload.renew_url || DEFAULT_RENEW_URL;
     const message =
       `Your AI Employee Builder license wasn't accepted — ${reason} ` +
-      "Ask the user to paste the license key from their Lemon Squeezy receipt email " +
-      "here in chat, then call the activate_license tool with it (takes effect " +
-      `immediately, no restart). If the subscription lapsed, renew/manage it here: ${renewUrl}`;
+      "Run /setup-aieb and use the secure activation page; never paste a key into chat. " +
+      `If the subscription lapsed, renew/manage it here: ${renewUrl}`;
     activationFailures.set(key, { message, until: Date.now() + ACTIVATION_FAILURE_TTL_MS });
     throw new Error(message);
   }
@@ -214,7 +237,12 @@ async function activate(key, licenseKey, activateUrl) {
 async function ensureSession() {
   if (session) return session;
 
-  const { candidates, remoteUrl, activateUrl } = await resolveConfig();
+  const { candidates, deviceToken, remoteUrl, activateUrl } = await resolveConfig();
+
+  if (deviceToken && deviceToken.startsWith("aieb_v1_")) {
+    session = { licenseKey: deviceToken, instanceId: "", remoteUrl };
+    return session;
+  }
 
   if (!candidates.length) {
     return { licenseKey: "", instanceId: "", remoteUrl };
@@ -261,20 +289,27 @@ async function forward(message) {
   const { licenseKey, instanceId, remoteUrl } = await ensureSession();
   const headers = {
     "Content-Type": "application/json",
-    Accept: "application/json, text/event-stream"
+    Accept: "application/json, text/event-stream",
+    "X-AIEB-Plugin-Version": PROXY_VERSION
   };
   if (licenseKey) headers.Authorization = `Bearer ${licenseKey}`;
   if (instanceId) headers["X-AIEB-Instance-ID"] = instanceId;
 
   let response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  timer.unref?.();
   try {
     response = await fetch(remoteUrl, {
       method: "POST",
       headers,
-      body: JSON.stringify(message)
+      body: JSON.stringify(message),
+      signal: controller.signal
     });
   } catch (error) {
     throw networkError(error);
+  } finally {
+    clearTimeout(timer);
   }
 
   const text = await response.text();
@@ -289,30 +324,145 @@ async function forward(message) {
 
 // --- Local tools -----------------------------------------------------------
 
-// The in-chat license setup. Handled entirely by THIS proxy (which runs on the
-// buyer's real machine), so it works from sandboxed surfaces (Cowork, Desktop)
-// where Claude's file tools can't reach the home directory. This is the primary
-// setup path on every surface: the buyer pastes their key in chat, Claude calls
-// this tool, done — no file editing, no restart.
-const ACTIVATE_TOOL = {
-  name: "activate_license",
+// Secure browser activation. The Lemon Squeezy key is entered only on the AIEB
+// course page and never transits the model/chat. The proxy receives a one-time,
+// AIEB-scoped device token after the user approves the page.
+const CONNECT_TOOL = {
+  name: "connect_aieb",
   description:
-    "Set up or fix the AI Employee Builder license on this machine. Call this whenever the user " +
-    "provides their AIEB license key (it's in their Lemon Squeezy receipt email) — first-time setup, " +
-    "a replaced key, or after any AIEB call failed with a license problem. Validates the key with the " +
-    "server, saves it user-globally, and takes effect immediately — no restart, no file editing. " +
-    "Never echo the full key back in chat; refer to it by its last 4 characters only.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      license_key: {
-        type: "string",
-        description: "The buyer's AIEB license key exactly as pasted (stray quotes/spaces are fine)."
-      }
-    },
-    required: ["license_key"]
-  }
+    "Start or repair the secure AI Employee Builder connection. Call this when setup is needed or a paid " +
+    "skill says the connection is missing. It returns one safe activation link. The user opens it and " +
+    "enters their Lemon Squeezy key on the AIEB page, never in chat.",
+  inputSchema: { type: "object", properties: {} }
 };
+
+const FINISH_CONNECT_TOOL = {
+  name: "finish_aieb_connection",
+  description:
+    "Finish AI Employee Builder setup after the user completed the secure activation page. Call when the " +
+    "user says done/connected. It retrieves and saves the AIEB device token, then setup works immediately.",
+  inputSchema: { type: "object", properties: {} }
+};
+
+const LEGACY_ACTIVATE_TOOL = {
+  name: "activate_license",
+  description: "Legacy setup is retired. Call connect_aieb to get the secure activation page.",
+  inputSchema: { type: "object", properties: {} }
+};
+
+async function postJson(url, body, timeoutMs = 12_000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  timer.unref?.();
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    const payload = await response.json().catch(() => ({}));
+    return { response, payload };
+  } catch (error) {
+    throw networkError(error);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function handleConnectAieb(id) {
+  try {
+    const resolved = await resolveConfig();
+    if (resolved.deviceToken?.startsWith("aieb_v1_")) {
+      return toolResult(id, "AI Employee Builder is already securely connected on this machine. Continue the user's task now.");
+    }
+
+    const existing = await readJsonFile(pendingActivationPath);
+    if (existing?.verification_url && new Date(existing.expires_at).getTime() > Date.now()) {
+      return toolResult(
+        id,
+        `Open this secure activation page: ${existing.verification_url}\n\n` +
+          `The code is ${existing.user_code}. Enter the Lemon Squeezy key on that page, never in chat. ` +
+          `When the page says connected, return here and say "done".`
+      );
+    }
+
+    const cfg = resolved.cfg || {};
+    const installationId = cfg.installation_id || crypto.randomUUID();
+    const verifier = crypto.randomBytes(32).toString("base64url");
+    const machine = os.hostname() || "buyer-device";
+    const { response, payload } = await postJson(resolved.deviceStartUrl, {
+      verifier,
+      device_ref: installationId,
+      device_label: `AIEB - ${machine}`.slice(0, 100)
+    });
+    if (!response.ok || !payload.device_code || !payload.verification_url) {
+      throw new Error(payload.reason || "The secure activation page could not be started. Try again in a minute.");
+    }
+
+    cfg.installation_id = installationId;
+    await writeJsonFile(configPath, cfg);
+    const pending = {
+      device_code: payload.device_code,
+      verifier,
+      user_code: payload.user_code,
+      verification_url: payload.verification_url,
+      expires_at: new Date(Date.now() + Number(payload.expires_in || 900) * 1000).toISOString()
+    };
+    await writeJsonFile(pendingActivationPath, pending);
+    return toolResult(
+      id,
+      `Open this secure activation page: ${pending.verification_url}\n\n` +
+        `The code is ${pending.user_code}. Enter the Lemon Squeezy key on that page, never in chat. ` +
+        `When the page says connected, return here and say "done".`
+    );
+  } catch (error) {
+    return toolResult(id, error.message, true);
+  }
+}
+
+async function handleFinishAiebConnection(id) {
+  try {
+    const pending = await readJsonFile(pendingActivationPath);
+    if (!pending?.device_code || !pending?.verifier) {
+      return toolResult(id, "No secure activation is waiting. Call connect_aieb first to get the activation link.", true);
+    }
+    const { deviceStatusUrl } = await resolveConfig();
+    const { response, payload } = await postJson(deviceStatusUrl, {
+      device_code: pending.device_code,
+      verifier: pending.verifier
+    });
+    if (payload.status === "pending") {
+      return toolResult(id, `The activation page is still waiting. Open ${pending.verification_url}, finish it, then say "done".`, true);
+    }
+    if (!response.ok || payload.status !== "approved" || !payload.device_token) {
+      return toolResult(
+        id,
+        payload.status === "expired"
+          ? "That activation link expired. Call connect_aieb for a fresh link."
+          : "The secure activation was not completed. Call connect_aieb for a fresh link.",
+        true
+      );
+    }
+
+    const cfg = (await readJsonFile(configPath)) || {};
+    cfg.device_token = payload.device_token;
+    cfg.device_ref = payload.device_ref || cfg.device_ref || "";
+    cfg.connected_at = new Date().toISOString();
+    delete cfg.license_key;
+    await writeJsonFile(configPath, cfg);
+    await fs.rm(pendingActivationPath, { force: true });
+    sessionDeviceToken = payload.device_token;
+    sessionKey = "";
+    session = null;
+    return toolResult(
+      id,
+      "AI Employee Builder is securely connected. Continue the user's original task now; no restart or reload is needed."
+    );
+  } catch (error) {
+    return toolResult(id, error.message, true);
+  }
+}
 
 // Offline fallback for tools/list — the live server catalog is preferred, this
 // is the floor that keeps the connector usable when the server is unreachable.
@@ -327,60 +477,25 @@ const GET_SKILL_FALLBACK_TOOL = {
     type: "object",
     properties: {
       skill_id: { type: "string", description: "AIEB skill id, e.g. meta-create-skill or business-x-ray." },
-      path: { type: "string", description: "Optional file path inside the skill. Defaults to SKILL.md." },
-      task_context: { type: "string", description: "Optional short description of the task." }
+      path: { type: "string", description: "Optional file path inside the skill. Defaults to SKILL.md." }
     },
     required: ["skill_id"]
   }
 };
 
-// Always present the local activate_license tool alongside whatever catalog is
-// in play (live or fallback) — it must be callable precisely when the license
-// is broken, which is exactly when the live catalog may not load.
 function withLocalTools(tools) {
   const list = Array.isArray(tools) && tools.length ? tools : [GET_SKILL_FALLBACK_TOOL];
-  const filtered = list.filter((t) => t?.name !== ACTIVATE_TOOL.name);
-  return [...filtered, ACTIVATE_TOOL];
+  const names = new Set([CONNECT_TOOL.name, FINISH_CONNECT_TOOL.name, LEGACY_ACTIVATE_TOOL.name]);
+  const filtered = list.filter((tool) => !names.has(tool?.name));
+  return [...filtered, CONNECT_TOOL, FINISH_CONNECT_TOOL, LEGACY_ACTIVATE_TOOL];
 }
 
-async function handleActivateLicense(id, args) {
-  const key = cleanValue(args?.license_key);
-  if (!isUsableKey(key)) {
-    return toolResult(
-      id,
-      "That doesn't look like a license key. Ask the user to copy the key from their Lemon Squeezy " +
-        "receipt email (the 'License key' line) and paste it here, then call this tool again.",
-      true
-    );
-  }
-
-  // An explicit attempt deserves a fresh verdict — drop any cached rejection.
-  activationFailures.delete(fingerprint(key));
-
-  try {
-    const { activateUrl } = await resolveConfig();
-    await getInstanceId(key, activateUrl);
-
-    // The server accepted the key — persist it user-globally so every folder
-    // and every future session finds it, and adopt it right now.
-    const cfg = (await readJsonFile(configPath)) || {};
-    cfg.license_key = key;
-    cfg.saved_at = new Date().toISOString();
-    await fs.mkdir(stateDir, { recursive: true });
-    await fs.writeFile(configPath, JSON.stringify(cfg, null, 2), "utf8");
-
-    sessionKey = key;
-    session = null; // rebuild with the new key on the next call
-
-    return toolResult(
-      id,
-      "License activated and saved. AI Employee Builder is ready on this machine — every folder, " +
-        "no restart needed. Continue with the user's original task now (re-run the call that failed, " +
-        "if there was one)."
-    );
-  } catch (error) {
-    return toolResult(id, error.message, true);
-  }
+async function handleLegacyActivate(id) {
+  return toolResult(
+    id,
+    "For security, license keys are no longer entered in chat. Call connect_aieb now and give the user its secure activation link.",
+    false
+  );
 }
 
 // How long we wait for the server's live catalog before falling back to the
@@ -441,8 +556,16 @@ rl.on("line", async (line) => {
     writeMessage(result(id, { tools: withLocalTools(remoteTools) }));
     return;
   }
-  if (method === "tools/call" && message.params?.name === ACTIVATE_TOOL.name) {
-    writeMessage(await handleActivateLicense(id, message.params?.arguments));
+  if (method === "tools/call" && message.params?.name === CONNECT_TOOL.name) {
+    writeMessage(await handleConnectAieb(id));
+    return;
+  }
+  if (method === "tools/call" && message.params?.name === FINISH_CONNECT_TOOL.name) {
+    writeMessage(await handleFinishAiebConnection(id));
+    return;
+  }
+  if (method === "tools/call" && message.params?.name === LEGACY_ACTIVATE_TOOL.name) {
+    writeMessage(await handleLegacyActivate(id));
     return;
   }
   if (method === undefined && id === undefined) {
@@ -461,10 +584,10 @@ rl.on("line", async (line) => {
 });
 
 resolveConfig().then(
-  ({ candidates, remoteUrl }) =>
+  ({ candidates, deviceToken, remoteUrl }) =>
     console.error(
       `AIEB MCP proxy ready (node ${process.version})${caNote} -> ${remoteUrl}` +
-        (candidates.length ? "" : " [no license key yet — paste it in chat and Claude will activate it]")
+        (deviceToken || candidates.length ? "" : " [not connected yet — call connect_aieb for the secure setup link]")
     ),
   () => console.error(`AIEB MCP proxy ready (node ${process.version})${caNote}`)
 );

@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "install_id": "",
-  "plugin_version": "ai-employee-builder-3.15.0",
+  "plugin_version": "ai-employee-builder-0.13.0",
   "form_action_url": "https://docs.google.com/forms/d/e/1FAIpQLSf65qvTLd5ABATyN0b5mRwCid5bDg2rFCuGLvWqBHUw-iCpdw/formResponse",
   "field_map": {
     "skill": "entry.1758595228",
@@ -15,5 +15,5 @@
     "install_id": "entry.1103748567",
     "plugin_version": "entry.1376758645"
   },
-  "_notes": "Read-only client config. Anonymized skill-feedback notes POST to the plugin author's Google Form (opt-in, gated by consent.py). State (install id + consent + inbox) lives in ~/.clo-skill-telemetry/. Disable with env CLO_TELEMETRY_OFF=1 or enabled=false."
+  "_notes": "Read-only client config. Only an explicitly invoked note-win/note-friction command may POST one genericized note. Automatic transcript capture and consent prompts are not installed. Disable with CLO_TELEMETRY_OFF=1 or enabled=false."
 }

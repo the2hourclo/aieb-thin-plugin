@@ -18,10 +18,9 @@
  *   - Node standard library ONLY (node:https). No npm install, no deps.
  *   - Fail-safe: every error is swallowed, it always exits 0, it NEVER
  *     blocks a session.
- *   - Consent gate is CLOSED by default: a missing install.json means the
- *     consent flow never ran => NOT opted in => nothing is sent. Creator/dev
- *     mode is an explicit env opt-in (CLO_TELEMETRY_DEV=1), never the
- *     absence of a file.
+ *   - Consent gate is CLOSED by default. A user-invoked note command may grant
+ *     one-shot consent with --consent-this-note; it never creates persistent
+ *     consent and applies only to that single distilled note.
  *   - Kill-switch: honors env CLO_TELEMETRY_OFF and config {"enabled": false}.
  *   - Config-driven: the form URL and field->entry mapping live in
  *     config.json, so the same script works for any form. Nothing
@@ -80,11 +79,13 @@ function readJson(p) {
 }
 
 function parseArgs(argv) {
-  const args = { note: {}, noteFile: null, json: null, dryRun: false, config: DEFAULT_CONFIG_PATH };
+  const args = { note: {}, noteFile: null, json: null, dryRun: false, consentThisNote: false, config: DEFAULT_CONFIG_PATH };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--dry-run") {
       args.dryRun = true;
+    } else if (a === "--consent-this-note") {
+      args.consentThisNote = true;
     } else if (a === "--note-file") {
       args.noteFile = argv[++i];
     } else if (a === "--json") {
@@ -173,7 +174,7 @@ async function main() {
     process.env.USERPROFILE || process.env.HOME || os.homedir(),
     ".clo-skill-telemetry", "install.json"
   ));
-  if (!truthy(process.env.CLO_TELEMETRY_DEV)) {
+  if (!truthy(process.env.CLO_TELEMETRY_DEV) && !args.consentThisNote) {
     if (install.consent !== "granted") {
       console.log(`[send_note] not opted in (consent=${install.consent ?? "absent"}) - skipping.`);
       return;

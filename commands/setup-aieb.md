@@ -1,67 +1,45 @@
 ---
-description: Connect AI Employee Builder with the buyer's Lemon Squeezy license key. One tool call validates the key, saves it machine-globally, and activates it instantly — no restart, works on Claude Code, Desktop, and Cowork.
-argument-hint: "[license key optional]"
+description: Securely connect AI Employee Builder through one activation link. The Lemon Squeezy key is entered on the AIEB page, never in chat, and setup takes effect without a restart.
 allowed-tools: [Read, Write, Edit, Bash]
 ---
 
 # Set Up AI Employee Builder
 
-You are connecting this machine to the AI Employee Builder server. The paid skill instructions live on that server and load at runtime after the license is checked — nothing of value is stored locally.
+Connect this machine with the shortest secure path. The paid instructions stay on the AIEB server; customer business data stays local.
 
-Since v0.12.0 the connector itself handles setup: it exposes an **`activate_license` tool** that validates the key with the server, saves it user-globally (`~/.aieb-mcp/config.json`), and starts using it immediately. The connector process runs on the buyer's real machine, so this works identically on Claude Code, Claude Desktop, and Cowork — including sandboxed surfaces where your file tools can't reach the home directory. **No file editing. No restart.**
+## Step 1 — Start the secure connection
 
-## Steps
+Find and call the AIEB connector tool ending in `connect_aieb`. Tool names vary by surface and may load lazily, so search rather than relying on the visible list.
 
-### 1. Get the license key
+It returns one clickable AIEB course-page URL and a short code. Give the user the link and say:
 
-- If `$ARGUMENTS` contains a key, use it.
-- Otherwise ask: "Paste your AI Employee Builder license key — it's in your Lemon Squeezy receipt email (the one you got when you bought)."
-- **If they say they don't have a key / haven't bought / came for the free map:** stop the setup — no key is needed for the free tier. Tell them: "You're already set — the **AI Employee Map** runs free on this connector, no key needed. Just say **'map my business'**. The full AI Employee Builder (create skills, agents, hooks, your build roadmap) comes with a plan: https://chiefleverageofficers.com/ai-employee-builders-invitation" and end there.
-- **Never repeat the full key back in chat.** If you need to refer to it, use only the last 4 characters.
-- Don't fuss about formatting — pasted quotes or spaces around the key are fine; the tool cleans them off.
+> Open this page, enter the Lemon Squeezy key there, and press **Connect**. Never paste the key in this chat. When the page says connected, come back and say **done**.
 
-### 2. Activate — one tool call
+Then stop and wait. Do not ask for the key, edit config files, or invent a second setup path.
 
-Call the **`activate_license`** tool on the AIEB connector with the pasted key. Tool-name note: the full name varies by surface (`mcp__aieb__activate_license`, `mcp__plugin_ai-employee-builder_aieb__activate_license`, …) and it may load lazily — search for any `activate_license` tool rather than checking the visible list.
+If the user only wants the free AI Employee Map, tell them no connection is required: they can simply say **map my business**.
 
-Read the tool result and speak like a human, not a terminal:
+## Step 2 — Finish when the user returns
 
-- **Success** — the key is validated, saved for every folder on this machine, and live right now. Continue to step 3.
-- **"license wasn't accepted"** — the server looked at the key and said no. Relay the reason warmly, then: "Double-check the key in your Lemon Squeezy receipt email — it's easy to grab the wrong line. If your subscription lapsed, you can renew here:" and give the renewal link from the message. Offer to try again with a fresh paste. Don't retry the same key.
-- **"Can't reach the server"** — nothing wrong with the key; the machine couldn't reach the server. Say so plainly: "I couldn't reach the AI Employee Builder server — check your internet or VPN and we'll try again."
+When the user says `done`, `connected`, or equivalent, call the AIEB connector tool ending in `finish_aieb_connection`.
 
-**Fallback — only if no `activate_license` tool exists anywhere after searching** (the connector is missing or predates v0.12.0):
+- **Approved:** the connector saves an AIEB-scoped device token and starts using it immediately. No restart or reload.
+- **Still pending:** show the same activation link once and ask them to finish the page.
+- **Expired:** call `connect_aieb` once for a fresh link.
+- **Cancelled/expired subscription:** relay the server's plain-language renewal or resumption guidance. Never bypass it.
 
-- On **Claude Code**: run the setup script, passing the key through an environment variable (never on the command line, never echoed):
+## Step 3 — Verify and continue
 
-  ```bash
-  AIEB_SETUP_KEY="<PASTE_KEY_HERE>" node "${CLAUDE_PLUGIN_ROOT}/scripts/setup-license.mjs"
-  ```
+Call `get_skill` with `skill_id: meta-create-skill`, `path: SKILL.md`. If it succeeds, continue the user's original task immediately.
 
-  It prints one JSON line: cleans + validates the key against `/activate`, saves `~/.aieb-mcp/config.json`, and verifies with a real skill fetch. Report `ok`/`kind` conversationally (`rejected` → relay `reason` + `renew_url`; `network` → connection problem, key is fine).
-- On **Claude Desktop / Cowork**: the connector isn't installed — send the user back through the AI Employee Builder install instructions from their purchase (the get-access page in their receipt). Once the plugin is installed, they just paste the key in chat and you call `activate_license`.
+## Migration behavior
 
-### 3. Verify with a real fetch
+Existing users with a legacy saved Lemon Squeezy key continue working during migration. Once secure browser activation succeeds, the proxy deletes the saved key and keeps only the revocable AIEB device token.
 
-Call `get_skill` with `skill_id: meta-create-skill`, `path: SKILL.md`. A successful fetch is end-to-end proof (license → activation → licensed content). If it fails with a license message right after a successful activation, relay the message and stop — don't loop.
+## Non-negotiable rules
 
-### 4. Clean up the old per-folder config (migration, Claude Code only)
-
-Older versions of this plugin wrote an `aieb` server entry (with the key inside it) into the **workspace** `.mcp.json`. That's no longer needed and can shadow the new global key with a stale one.
-
-- Read `.mcp.json` in the current workspace root (if it exists).
-- If it has an `mcpServers.aieb` entry: remove **only** that entry, keep every other server untouched, and write the file back. If `aieb` was the only thing in the file, delete the file.
-- Tell the user why in one line: "I removed the old per-folder AIEB entry from this workspace's `.mcp.json` — the connector is part of the plugin now, so it works in every folder and your key lives in one safe place."
-- If there's no such entry, say nothing about migration.
-
-### 5. Confirm
-
-Finish with: "**You're set up on this whole machine now** — every folder, every session. Just ask for what you need — 'business x-ray', 'create a skill', 'onboard me'."
-
-## Important Rules
-
-- Never bypass the license check.
-- Never print or store the license key anywhere except through the `activate_license` tool (or the fallback script) — and never echo it back in chat.
-- Never claim the paid skills are installed locally. They load from the server at runtime.
-- If the license is invalid, expired, cancelled, or for another product, relay the server's reason and the renewal link, then stop. Don't retry the same key.
-- Never hand-write `~/.aieb-mcp/config.json` or drive GUI apps (Notepad, screen control) to edit it — the `activate_license` tool is the only sanctioned writer, and unlike a file edit it validates the key first and takes effect without a restart.
+- Never request or accept a Lemon Squeezy key in chat.
+- Never place a key in a command, environment variable, URL, workspace file, or model-visible tool argument.
+- Never hand-write `~/.aieb-mcp/config.json`.
+- Never claim paid skills are installed locally.
+- Never bypass cancellation, expiration, product, store, tier, device, or rate-limit checks.
