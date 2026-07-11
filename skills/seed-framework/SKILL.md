@@ -1,6 +1,6 @@
 ---
 name: seed-framework
-description: Writing employee · Universal teaching framework (Show → Extend → Expose → Direct) for explaining any concept in visuals, text, slides, video, or docs. Three modes — CREATE, DIAGNOSE, REWRITE. USE WHEN user says 'explain this concept', 'teach this', 'break this down', 'make this clear', 'SEED this', 'apply SEED', 'how do I explain X', 'this needs to be clearer', 'check if this makes sense', 'diagnose this content', 'find the gaps', 'would a reader understand this', 'SEED diagnose', 'SEED check', or when any concept needs to be taught to an audience who doesn't already understand it.
+description: Writing employee · Universal teaching framework (Show → Extend → Expose → Direct) for explaining any concept in visuals, text, slides, video, or docs. Three modes — CREATE, DIAGNOSE, REWRITE. USE WHEN user says 'explain this concept', 'explain this so a beginner gets it', 'explain it simply', 'teach this', 'break this down', 'make this clear', 'SEED this', 'apply SEED', 'how do I explain X', 'this needs to be clearer', 'check if this makes sense', 'diagnose this content', 'find the gaps', 'would a reader understand this', 'SEED diagnose', 'SEED check', or when any concept needs to be taught to an audience who doesn't already understand it.
 user-invocable: false
 ---
 

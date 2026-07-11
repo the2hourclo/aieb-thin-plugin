@@ -1,6 +1,6 @@
 ---
 name: write
-description: Writing employee · Newsletter, long-form article, and general email writing. Plan argument structure, draft phase-by-phase, humanize the prose, install your teaching voice, then format for Substack. USE WHEN user says 'write newsletter', 'newsletter about', 'plan newsletter', 'write article', 'long-form post', 'write email', 'write an email', 'draft an email', 'email about', 'daily email', 'broadcast email'. For general one-off / broadcast / daily emails only — welcome, onboarding, sequence, and campaign emails route to the copywriter skill instead.
+description: "Writing employee · Newsletter, long-form article, and general email writing. Plan argument structure, draft phase-by-phase, humanize the prose, install your teaching voice, then format for Substack. USE WHEN user says 'write newsletter', 'newsletter about', 'plan newsletter', 'write article', 'long-form post', 'write email', 'write an email', 'draft an email', 'email about', 'daily email', 'broadcast email'. For general one-off / broadcast / daily emails only — welcome, onboarding, sequence, and campaign emails route to the copywriter skill instead. Do NOT use when the user wants ONLY the argument structure planned before any prose is written (route to writing-logic), ONLY platform formatting of already-written text like 'format this for Substack' (route to writing-format), or to set up or calibrate their voice sample files (route to setup-content-employees)."
 hooks:
   PostToolUse:
     - matcher: "Write"
