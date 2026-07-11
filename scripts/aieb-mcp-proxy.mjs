@@ -24,7 +24,17 @@ try {
 
 const DEFAULT_MCP_URL = "https://aieb-gated-mcp.vercel.app/mcp";
 const DEFAULT_RENEW_URL = "https://chiefleverageofficer.com/aieb";
-const PROXY_VERSION = "0.14.0";
+const PROXY_VERSION = "0.14.2";
+let clientSurface = "unknown";
+
+function normalizeClientSurface(clientInfo = {}) {
+  const name = String(clientInfo?.name || "").toLowerCase();
+  if (name.includes("codex") || name.includes("openai")) return "codex";
+  if (name.includes("cowork")) return "cowork";
+  if (name.includes("claude-code") || name.includes("claude code")) return "claude_code";
+  if (name.includes("claude") || name.includes("anthropic")) return "claude_desktop";
+  return "unknown";
+}
 
 const explicitInstanceId = process.env.AIEB_INSTANCE_ID || "";
 const stateDir = path.join(os.homedir(), ".aieb-mcp");
@@ -290,7 +300,8 @@ async function forward(message) {
   const headers = {
     "Content-Type": "application/json",
     Accept: "application/json, text/event-stream",
-    "X-AIEB-Plugin-Version": PROXY_VERSION
+    "X-AIEB-Plugin-Version": PROXY_VERSION,
+    "X-AIEB-Client-Surface": clientSurface
   };
   if (licenseKey) headers.Authorization = `Bearer ${licenseKey}`;
   if (instanceId) headers["X-AIEB-Instance-ID"] = instanceId;
@@ -539,6 +550,7 @@ rl.on("line", async (line) => {
   // --- Answer the handshake LOCALLY so attaching never depends on the network
   // or on a license being set up yet ---
   if (method === "initialize") {
+    clientSurface = normalizeClientSurface(message.params?.clientInfo);
     writeMessage(
       result(id, {
         protocolVersion: "2025-06-18",
