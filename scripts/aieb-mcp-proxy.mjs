@@ -24,15 +24,33 @@ try {
 
 const DEFAULT_MCP_URL = "https://aieb-gated-mcp.vercel.app/mcp";
 const DEFAULT_RENEW_URL = "https://chiefleverageofficer.com/aieb";
-const PROXY_VERSION = "0.14.2";
+const PROXY_VERSION = "0.14.3";
 let clientSurface = "unknown";
+
+// Cowork's engine announces itself with a claude-code client name (verified
+// live 2026-07-11: a Cowork build landed as claude_code), so the handshake name
+// alone cannot tell the two apart. Cowork sessions run in a sandbox that
+// injects host-proxy/tmpdir vars plain Claude Code never sets — that is the
+// discriminator. If another sandboxed surface (e.g. web) sets the same vars it
+// will read as cowork until we learn its real marker from client-info.json.
+function inCoworkSandbox() {
+  return Boolean(
+    process.env.CLAUDE_CODE_HOST_HTTP_PROXY_PORT ||
+      process.env.CLAUDE_CODE_HOST_SOCKS_PROXY_PORT ||
+      process.env.CLAUDE_CODE_TMPDIR
+  );
+}
 
 function normalizeClientSurface(clientInfo = {}) {
   const name = String(clientInfo?.name || "").toLowerCase();
   if (name.includes("codex") || name.includes("openai")) return "codex";
   if (name.includes("cowork")) return "cowork";
-  if (name.includes("claude-code") || name.includes("claude code")) return "claude_code";
-  if (name.includes("claude") || name.includes("anthropic")) return "claude_desktop";
+  if (name.includes("claude-code") || name.includes("claude code")) {
+    return inCoworkSandbox() ? "cowork" : "claude_code";
+  }
+  if (name.includes("claude") || name.includes("anthropic")) {
+    return inCoworkSandbox() ? "cowork" : "claude_desktop";
+  }
   return "unknown";
 }
 
@@ -41,6 +59,11 @@ const stateDir = path.join(os.homedir(), ".aieb-mcp");
 const statePath = path.join(stateDir, "activation.json");
 const configPath = path.join(stateDir, "config.json");
 const pendingActivationPath = path.join(stateDir, "pending-activation.json");
+// Outcome-report nudge state (read by hooks/report_nudge_stop.mjs) + the raw
+// client identity for surface-mapping debugging. Best-effort only — telemetry
+// plumbing must never break the proxy.
+const pendingReportPath = path.join(stateDir, "pending-report.json");
+const clientInfoPath = path.join(stateDir, "client-info.json");
 
 // Strip whitespace and any surrounding quotes a buyer pasted along with a value
 // (keys arrive as  "ABCD-…" ,  'ABCD-…' , or with stray spaces).
@@ -530,6 +553,42 @@ async function fetchRemoteTools(message) {
   }
 }
 
+// --- Outcome-report nudge state -------------------------------------------
+// The proxy sees every MCP call, so it is the one deterministic observer of
+// "an AIEB skill was served but its outcome was never reported". A successful
+// entry-skill fetch (SKILL.md) writes a pending marker; a terminal
+// report_product_outcome clears it. The plugin's Stop hook reads the marker and
+// nudges Claude ONCE before the turn ends. Every failure here is swallowed —
+// this must never affect the actual request/response path.
+async function trackOutcomeState(message, response) {
+  try {
+    if (message?.method !== "tools/call") return;
+    const name = message.params?.name;
+    const args = message.params?.arguments || {};
+    const ok = response?.result && !response.result.isError;
+    if (!ok) return;
+    if (name === "get_skill") {
+      const fetchPath = String(args.path || "SKILL.md");
+      if (!/(^|\/)SKILL\.md$/i.test(fetchPath)) return; // sub-path fetches belong to an already-marked run
+      await writeJsonFile(pendingReportPath, {
+        skill_id: String(args.skill_id || ""),
+        fetched_at: Date.now(),
+        started: false,
+        nudged: false
+      });
+    } else if (name === "report_product_outcome" || name === "report_build_outcome") {
+      if (String(args.outcome || "") === "started") {
+        const pending = await readJsonFile(pendingReportPath);
+        if (pending) await writeJsonFile(pendingReportPath, { ...pending, started: true });
+      } else {
+        await fs.unlink(pendingReportPath).catch(() => {});
+      }
+    }
+  } catch {
+    // never let nudge plumbing break the proxy
+  }
+}
+
 const rl = readline.createInterface({
   input: process.stdin,
   crlfDelay: Infinity
@@ -551,6 +610,15 @@ rl.on("line", async (line) => {
   // or on a license being set up yet ---
   if (method === "initialize") {
     clientSurface = normalizeClientSurface(message.params?.clientInfo);
+    // Persist the RAW client identity so surface-mapping mistakes are debuggable
+    // from the buyer machine (no more guessing what a client calls itself).
+    writeJsonFile(clientInfoPath, {
+      name: String(message.params?.clientInfo?.name || ""),
+      version: String(message.params?.clientInfo?.version || ""),
+      normalized_surface: clientSurface,
+      cowork_sandbox_env: inCoworkSandbox(),
+      seen_at: new Date().toISOString()
+    }).catch(() => {});
     writeMessage(
       result(id, {
         protocolVersion: "2025-06-18",
@@ -586,6 +654,9 @@ rl.on("line", async (line) => {
 
   try {
     const response = await forward(message);
+    // State first, THEN the reply: the client fires its next call the moment it
+    // sees the response, and the marker must already reflect this one.
+    await trackOutcomeState(message, response);
     if (response) writeMessage(response);
   } catch (error) {
     console.error(`AIEB MCP proxy error: ${error.message}`);
