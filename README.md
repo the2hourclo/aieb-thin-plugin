@@ -6,7 +6,7 @@ This plugin is intentionally thin: it contains no paid AIEB instruction bodies. 
 - Secure activation API: `https://aieb-gated-mcp.vercel.app/device/*`
 - Customer activation page: `https://the2hourclo.github.io/clo-courses/clo-course/get-access-aieb.html`
 
-## Secure connection model (v0.13.0)
+## Secure connection model (v0.14.0)
 
 The connector is defined at plugin level, so it exists in every folder the buyer opens. Setup is a device flow:
 

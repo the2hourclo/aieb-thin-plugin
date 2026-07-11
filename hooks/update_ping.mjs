@@ -164,7 +164,7 @@ const FIRM =
 
 const GENTLE =
   `[${PLUGIN_NAME} hook] A newer AI Employee Builder plugin shell is available (v{latest}; ` +
-  `this workspace has v{have}). Purely optional. When there's a natural opening, ` +
+  `this workspace has v{have}). When there's a natural opening, ` +
   `mention it ONCE, casually, with the steps: ${UPDATE_CMDS}, and that afterwards they can ` +
   `say 'check my setup' to refresh their workspace. Don't push or interrupt a task. ` +
   `(Skill content updates automatically — this only refreshes the local shell.)`;
@@ -211,13 +211,14 @@ async function main() {
     logEvent("skipped-throttle");
     return;
   }
-  recordCheck();
-
   const remote = await fetchRemoteVersions();
   if (!remote) {
     logEvent("no-remote-version");
     return;
   }
+  // Only throttle a successful check. A transient Cowork/Claude network miss
+  // should retry next session, not suppress update awareness for 24 hours.
+  recordCheck();
 
   const parts = [];
   let shellStage = null;

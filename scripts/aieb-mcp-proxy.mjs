@@ -24,7 +24,7 @@ try {
 
 const DEFAULT_MCP_URL = "https://aieb-gated-mcp.vercel.app/mcp";
 const DEFAULT_RENEW_URL = "https://chiefleverageofficer.com/aieb";
-const PROXY_VERSION = "0.13.0";
+const PROXY_VERSION = "0.14.0";
 
 const explicitInstanceId = process.env.AIEB_INSTANCE_ID || "";
 const stateDir = path.join(os.homedir(), ".aieb-mcp");
