@@ -8,8 +8,10 @@
  * inject a small nudge into this session's first turn. The nudge routes by
  * OWNERSHIP: a skill in the buyer's own `.claude/skills/` is theirs — the
  * plugin's author can't fix it, so the retrospective skill (a direct
- * SKILL.md patch) leads. /note-friction is offered only for the plugin's
- * built-in skills.
+ * SKILL.md patch) leads. A consent-gated friction note (following
+ * skill-telemetry/note-friction-procedure.md) is offered only for the
+ * plugin's built-in skills — there is no note command; Claude runs the
+ * procedure itself after an explicit in-chat yes.
  *
  * Why SessionStart instead of a Stop + UserPromptSubmit pair: retros look
  * backward at completed work, so triggering at the start of the NEXT session
@@ -85,9 +87,10 @@ const NUDGE =
   "this machine). If it is one of the plugin's built-in skills, offer the " +
   "one-step flag instead: \"Want me to flag it to the author so it gets " +
   "fixed for everyone? It sends a short anonymized note — no transcript " +
-  `or content leaves your machine.\" On yes, run /${PLUGIN_NAME}:note-friction ` +
-  "with the skill + what went wrong (one distilled note, opt-in gated — " +
-  "nothing leaves if they haven't opted in). Don't push, don't interrupt " +
+  "or content leaves your machine.\" On yes, follow the procedure in this " +
+  "plugin's skill-telemetry/note-friction-procedure.md with the skill + " +
+  "what went wrong (one distilled note; that yes covers this single note " +
+  "only — nothing is ever sent without it). Don't push, don't interrupt " +
   "mid-task, mention it once.";
 
 function findPreviousTranscript(current) {

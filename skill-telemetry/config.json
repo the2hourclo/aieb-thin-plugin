@@ -15,5 +15,5 @@
     "install_id": "entry.1103748567",
     "plugin_version": "entry.1376758645"
   },
-  "_notes": "Read-only client config. Only an explicitly invoked note-win/note-friction command may POST one genericized note. Automatic transcript capture and consent prompts are not installed. Disable with CLO_TELEMETRY_OFF=1 or enabled=false."
+  "_notes": "Read-only client config. A note is POSTed only after the user gives an explicit in-chat yes to sending that one genericized note (see note-friction-procedure.md / note-win-procedure.md in this folder — there are no note slash commands). Automatic transcript capture is not installed. Disable with CLO_TELEMETRY_OFF=1 or enabled=false."
 }

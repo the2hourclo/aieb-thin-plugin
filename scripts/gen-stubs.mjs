@@ -46,6 +46,15 @@ const SRC_OVERRIDES = {
   "check-setup": path.dirname(MANIFEST_PATH).replace(/config$/, "content-src")
 };
 
+// Skills whose FULL body ships locally instead of a loader stub. The rescue
+// skill cannot live behind the connector it exists to rescue (2026-07-11
+// architecture pass, R1): check-setup must be able to run when get_skill is
+// missing or broken. Source stays canonical (content-src / plugin repo); this
+// script copies the whole body so regeneration keeps local copies in lockstep.
+// The skill stays in the manifest so find_skill and older (stub-era) shells
+// still resolve it server-side.
+const LOCAL_FULL = new Set(["check-setup"]);
+
 const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
 const SKILLS = [];
 for (const [tierId, tier] of Object.entries(manifest.tiers)) {
@@ -170,7 +179,10 @@ for (const { id, srcRoot, tier } of SKILLS) {
   const skillMeta = manifest.skills?.[id];
   const frontmatter = applyMenuFields(m[1].trim(), skillMeta);
   if (skillMeta?.menu === "hidden") hiddenCount++;
-  const out = `---\n${frontmatter}\n---\n\n${loaderBody(id)}`;
+  const body = LOCAL_FULL.has(id)
+    ? src.slice(m[0].length).replace(/^\s+/, "") // full body, verbatim from source
+    : loaderBody(id);
+  const out = `---\n${frontmatter}\n---\n\n${body}`;
   const dstDir = path.join(DST, id);
   fs.mkdirSync(dstDir, { recursive: true });
   fs.writeFileSync(path.join(dstDir, "SKILL.md"), out, "utf8");

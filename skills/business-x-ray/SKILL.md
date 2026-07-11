@@ -1,6 +1,6 @@
 ---
 name: business-x-ray
-description: Builder employee · Map, diagnose, and optimize business operations through progressive visual analysis. Creates Business Maps, Bow-Tie Funnels, Process Swimlanes with 3-level drill-down, a System Connection Map, and a future-state Operating System Map that redraws the business as connected AI Employees (with MCP-availability mapping for every tool).
+description: "Builder employee · Map, diagnose, and optimize business operations through progressive visual analysis. Creates Business Maps, Bow-Tie Funnels, Process Swimlanes with 3-level drill-down, a System Connection Map, and a future-state Operating System Map that redraws the business as connected AI Employees (with MCP-availability mapping for every tool). USE WHEN user says 'business x-ray', 'x-ray my business', 'map my business', 'diagnose my business', 'where am I the bottleneck', 'map my operations', 'audit my business', 'score my business assets', 'what is my leverage score', 'assess my digital assets', 'continue my business map', 'read my business diagram', or wants a visual diagnosis of how their business runs. Do NOT use to scaffold folders/file structure (business-os), to build the skills the map surfaces (meta-create-skill), or for the free intro-level 4-level map (ai-employee-map)."
 ---
 
 # business-x-ray — MCP loader
