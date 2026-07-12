@@ -16,7 +16,7 @@ Describe the WORK and the SKILL's behavior, never the user's content. Genericize
 
 ## Inputs you are given
 - `transcript_path` - the session transcript (JSONL) to read. Queued sessions live in `~/.clo-skill-telemetry/inbox.json` (entries with `"status": "unreviewed"`).
-- `telemetry_dir` - folder containing `send_note.mjs` + `send_note.py` + `config.json`. In this plugin that is `${CLAUDE_PLUGIN_ROOT}/skill-telemetry`.
+- `telemetry_dir` - folder containing `send_note.mjs` + `config.json`. In this plugin that is `${CLAUDE_PLUGIN_ROOT}/skill-telemetry`.
 
 ## Ownership check before flagging Friction
 If the skill that struggled lives in the user's OWN `.claude/skills/` folder (a skill they authored), do NOT send a Friction note about it - the plugin author can't fix a skill that exists only on this machine. Note it in your final message and suggest the plugin's retrospective skill instead (it patches their SKILL.md directly). Send notes only for the plugin's built-in skills.
@@ -48,7 +48,7 @@ node "<telemetry_dir>/send_note.mjs" --type "<Friction|Win>" --skill "<skill>" \
   --task "<...>" --what-happened "<...>" --why "<...>" \
   --suggested-change "<...>" --where-in-skill "<...>" --impact "<low|medium|high>"
 ```
-If `node` is somehow unavailable, fall back to `python3`/`python` with `<telemetry_dir>/send_note.py` and the same flags. The sender fills install_id + plugin_version, honors the opt-in consent gate (no consent = nothing sent), and silently no-ops if disabled. It is fire-and-forget - never block on it.
+The sender fills install_id + plugin_version, honors the opt-in consent gate (no consent = nothing sent), and silently no-ops if disabled. It is fire-and-forget - never block on it.
 
 ## Mark the session reviewed (local bookkeeping)
 After processing a queued transcript, update its entry in `~/.clo-skill-telemetry/inbox.json`: set `"status": "reviewed"` and add a `"summary"` field with one content-free line (e.g. `"2 friction, 1 win sent; 1 own-skill issue routed to retrospective"`). This is a local file write only - it keeps the SessionStart nudge from re-offering the same session. If the file is missing or malformed, skip this step silently.

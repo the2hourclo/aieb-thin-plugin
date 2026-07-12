@@ -13,15 +13,15 @@ Find and call the AIEB connector tool ending in `connect_aieb`. Tool names vary 
 
 It returns one clickable AIEB course-page URL and a short code. Give the user the link and say:
 
-> Open this page, enter the Lemon Squeezy key there, and press **Connect**. Never paste the key in this chat. When the page says connected, come back and say **done**.
+> Open this page, enter the Lemon Squeezy key there, and press **Connect**. Never paste the key in this chat. A few seconds after the page says connected, the connection finishes by itself — just come back and keep going.
 
 Then stop and wait. Do not ask for the key, edit config files, or invent a second setup path.
 
 If the user only wants the free AI Employee Map, tell them no connection is required: they can simply say **map my business**.
 
-## Step 2 — Finish when the user returns
+## Step 2 — Confirm when the user returns
 
-When the user says `done`, `connected`, or equivalent, call the AIEB connector tool ending in `finish_aieb_connection`.
+The connector completes the connection automatically in the background once the page approves. When the user returns and says anything (`done`, `connected`, or simply continues), call the AIEB connector tool ending in `finish_aieb_connection` to confirm — it reports success instantly when the auto-complete already ran.
 
 - **Approved:** the connector saves an AIEB-scoped device token and starts using it immediately. No restart or reload.
 - **Still pending:** show the same activation link once and ask them to finish the page.

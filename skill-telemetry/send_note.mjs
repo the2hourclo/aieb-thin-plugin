@@ -2,10 +2,8 @@
 /**
  * send_note.mjs - fire-and-forget sender for skill-feedback notes.
  *
- * Node port of send_note.py, and the PRIMARY sender: Node is guaranteed on
- * buyer machines because the plugin's connector runs on it; Python is not on
- * stock Windows. send_note.py stays as the fallback for the rare machine
- * where node is missing but python exists.
+ * The note sender. Node is guaranteed on buyer machines because the plugin's
+ * connector runs on it.
  *
  * Part of the CLO skill-telemetry pipeline. This is the ONE thing that ships
  * in the plugin and leaves a client's machine: it takes a single friction/win
@@ -51,7 +49,7 @@ const KNOWN_FIELDS = [
   "install_id", "plugin_version"
 ];
 
-// CLI flag -> note key (mirrors send_note.py's argparse dest names).
+// CLI flag -> note key.
 const FLAG_TO_KEY = {
   "--skill": "skill",
   "--type": "type",

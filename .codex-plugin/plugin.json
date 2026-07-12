@@ -1,6 +1,6 @@
 {
   "name": "ai-employee-builder",
-  "version": "0.4.0",
+  "version": "0.14.4",
   "description": "Public AI Employee Builder shell: auto-routing skill stubs + proactive hooks that connect buyers to the gated AIEB MCP server.",
   "author": {
     "name": "Rashid Khamis",
@@ -8,7 +8,7 @@
     "url": "https://chiefleverageofficer.substack.com/"
   },
   "homepage": "https://chiefleverageofficer.substack.com/",
-  "repository": "https://github.com/the2hourclo/clo-os-plugins",
+  "repository": "https://github.com/the2hourclo/aieb-thin-plugin",
   "license": "UNLICENSED",
   "keywords": [
     "aieb",

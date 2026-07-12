@@ -25,7 +25,7 @@ const PLUGIN_NAME = "ai-employee-builder";
 const MARKETPLACE = "aieb-thin-plugin";
 const THROTTLE_HOURS = 24;
 const VERSION_URL = process.env.AIEB_VERSION_URL || "https://aieb-gated-mcp.vercel.app/version";
-const TIMEOUT_MS = 6000; // short, so a slow network never stalls session start
+const TIMEOUT_MS = 3000; // short, so a slow network never stalls session start
 
 function claudeRoot() {
   const home = process.env.USERPROFILE || process.env.HOME || os.homedir();

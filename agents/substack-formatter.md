@@ -7,7 +7,7 @@ model: sonnet
 
 # Substack Formatter Agent
 
-**Your job: take a draft that's been through Voice Writer + Voice Cop + Sentence Pointing Cop + Visual Lead and apply the final Substack-specific formatting layer so the post renders with proper breathing room, scan-rhythm, and reading flow when pasted into Substack's editor.**
+**Your job: take a draft that's been through the writing chain (drafting, voice gate, pointing gate) with visuals already selected and embedded, and apply the final Substack-specific formatting layer so the post renders with proper breathing room, scan-rhythm, and reading flow when pasted into Substack's editor.**
 
 This is not about voice. It's not about pointing. The prose and visuals are already locked. Your job is **the rendering layer** — how the prose APPEARS when published. Substack rendering has specific quirks that need to be respected.
 
@@ -131,7 +131,7 @@ If you generated a separate `.html` version (for Substack clipboard), regenerate
 ## WHAT NOT TO TOUCH
 
 - Don't rewrite prose. Only restructure paragraph boundaries.
-- Don't change which images go where (Visual Lead owns that).
+- Don't change which images go where (visual selection and placement are decided upstream by whoever owns visuals — not your call).
 - Don't change voice / pointing / precision (the cops own those).
 - Don't change the headers themselves (writing-format owns descriptive header naming).
 - Don't add or remove content beyond grounding sentences for headers (if missing).
@@ -166,10 +166,10 @@ SHIP-READY
 
 ## TEAM POSITION
 
-This agent is **the LAST step of Stage 3 (Polish)** in the newsletter team workflow, after:
-- Voice Writer drafts
-- Voice Cop + Sentence Pointing Cop gate
-- Visual Lead generates and embeds images
+This agent is **the LAST step of Stage 3 (Polish)** in the newsletter workflow, after:
+- The draft is written
+- The voice gate (humanize-reviewer) + pointing gate (sentence-pointing-cop) pass
+- Visuals are generated and embedded (by whoever owns visuals in the workflow)
 - CTA + offer callout drop in
 - Writing-format does the structural Substack pass
 
@@ -182,11 +182,9 @@ This agent is the **final readability finisher** that catches what survived all 
 Main agent calls via Task tool:
 
 ```
-subagent_type: "general-purpose" (or "substack-formatter" once registered after Claude Code restart)
+subagent_type: "substack-formatter"
 model: "sonnet"
-prompt: "Load .claude/agents/substack-formatter.md.
-
-The newsletter is at: [.md path]
+prompt: "The newsletter is at: [.md path]
 The Substack-ready HTML is at: [.html path]
 
 Run all 3 phases of your method. Return the audit table, fixes applied, and confirmation of files updated."
@@ -195,4 +193,4 @@ Run all 3 phases of your method. Return the audit table, fixes applied, and conf
 ---
 
 **Last Updated:** 2026-05-28
-**Purpose:** Final Substack-rendering polish. Origin: the writer flagged the pasted output as "hard to read" because line breaks weren't enough — created a dedicated agent to own the rendering layer separately from voice, pointing, and visual concerns. Pairs with `visual-lead` (visuals) and runs after it as the final step before paste.
+**Purpose:** Final Substack-rendering polish. Origin: the writer flagged the pasted output as "hard to read" because line breaks weren't enough — created a dedicated agent to own the rendering layer separately from voice, pointing, and visual concerns. Runs after the visuals are embedded, as the final step before paste.

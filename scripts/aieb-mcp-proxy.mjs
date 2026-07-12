@@ -24,7 +24,7 @@ try {
 
 const DEFAULT_MCP_URL = "https://aieb-gated-mcp.vercel.app/mcp";
 const DEFAULT_RENEW_URL = "https://chiefleverageofficer.com/aieb";
-const PROXY_VERSION = "0.14.3";
+const PROXY_VERSION = "0.14.4";
 let clientSurface = "unknown";
 
 // Cowork's engine announces itself with a claude-code client name (verified
@@ -404,6 +404,71 @@ async function postJson(url, body, timeoutMs = 12_000) {
   }
 }
 
+// Persist an approved device token — shared by finish_aieb_connection and the
+// background activation poll, so both paths end in the identical connected state.
+async function persistDeviceToken(payload) {
+  const cfg = (await readJsonFile(configPath)) || {};
+  cfg.device_token = payload.device_token;
+  cfg.device_ref = payload.device_ref || cfg.device_ref || "";
+  cfg.connected_at = new Date().toISOString();
+  delete cfg.license_key;
+  await writeJsonFile(configPath, cfg);
+  await fs.rm(pendingActivationPath, { force: true });
+  sessionDeviceToken = payload.device_token;
+  sessionKey = "";
+  session = null;
+}
+
+// Background activation poll: the secure page already knows the moment the
+// buyer's key is approved, so the proxy watches device/status and completes the
+// connection WITHOUT the buyer having to come back and say "done". The manual
+// finish_aieb_connection tool stays as the fallback. Best-effort: any error
+// just ends the poll; the manual path still works.
+const ACTIVATION_POLL_INTERVAL_MS = 5_000;
+const ACTIVATION_POLL_MAX_MS = 15 * 60 * 1000; // matches the activation link's own expiry window
+let activationPollTimer = null;
+
+function startActivationPoll() {
+  if (activationPollTimer) return;
+  const startedAt = Date.now();
+  let inFlight = false;
+  const stop = () => {
+    if (activationPollTimer) clearInterval(activationPollTimer);
+    activationPollTimer = null;
+  };
+  activationPollTimer = setInterval(async () => {
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      if (Date.now() - startedAt > ACTIVATION_POLL_MAX_MS) return stop();
+      const pending = await readJsonFile(pendingActivationPath);
+      if (!pending?.device_code || !pending?.verifier) return stop(); // completed elsewhere or abandoned
+      const { deviceStatusUrl } = await resolveConfig();
+      const { payload } = await postJson(deviceStatusUrl, {
+        device_code: pending.device_code,
+        verifier: pending.verifier
+      }, 8_000);
+      if (payload.status === "approved" && payload.device_token) {
+        await persistDeviceToken(payload);
+        return stop();
+      }
+      if (payload.status === "expired") return stop();
+      // status pending → keep polling
+    } catch {
+      // transient network error: keep polling until the deadline
+    } finally {
+      inFlight = false;
+    }
+  }, ACTIVATION_POLL_INTERVAL_MS);
+  activationPollTimer.unref?.();
+}
+
+const CONNECT_INSTRUCTIONS = (pending) =>
+  `Open this secure activation page: ${pending.verification_url}\n\n` +
+  `The code is ${pending.user_code}. Enter the Lemon Squeezy key on that page, never in chat. ` +
+  `The connection completes by itself within a few seconds of the page saying connected — the user can ` +
+  `simply continue here. If a paid skill still reports no connection after a minute, call finish_aieb_connection.`;
+
 async function handleConnectAieb(id) {
   try {
     const resolved = await resolveConfig();
@@ -413,12 +478,8 @@ async function handleConnectAieb(id) {
 
     const existing = await readJsonFile(pendingActivationPath);
     if (existing?.verification_url && new Date(existing.expires_at).getTime() > Date.now()) {
-      return toolResult(
-        id,
-        `Open this secure activation page: ${existing.verification_url}\n\n` +
-          `The code is ${existing.user_code}. Enter the Lemon Squeezy key on that page, never in chat. ` +
-          `When the page says connected, return here and say "done".`
-      );
+      startActivationPoll();
+      return toolResult(id, CONNECT_INSTRUCTIONS(existing));
     }
 
     const cfg = resolved.cfg || {};
@@ -444,12 +505,8 @@ async function handleConnectAieb(id) {
       expires_at: new Date(Date.now() + Number(payload.expires_in || 900) * 1000).toISOString()
     };
     await writeJsonFile(pendingActivationPath, pending);
-    return toolResult(
-      id,
-      `Open this secure activation page: ${pending.verification_url}\n\n` +
-        `The code is ${pending.user_code}. Enter the Lemon Squeezy key on that page, never in chat. ` +
-        `When the page says connected, return here and say "done".`
-    );
+    startActivationPoll();
+    return toolResult(id, CONNECT_INSTRUCTIONS(pending));
   } catch (error) {
     return toolResult(id, error.message, true);
   }
@@ -457,6 +514,17 @@ async function handleConnectAieb(id) {
 
 async function handleFinishAiebConnection(id) {
   try {
+    // The background poll may have already completed the connection (it consumes
+    // the one-time activation), so a connected state ALWAYS wins over "no
+    // activation waiting" — the buyer saying "done" after auto-complete must
+    // hear success, not an error.
+    const resolved = await resolveConfig();
+    if (resolved.deviceToken?.startsWith("aieb_v1_")) {
+      return toolResult(
+        id,
+        "AI Employee Builder is securely connected. Continue the user's original task now; no restart or reload is needed."
+      );
+    }
     const pending = await readJsonFile(pendingActivationPath);
     if (!pending?.device_code || !pending?.verifier) {
       return toolResult(id, "No secure activation is waiting. Call connect_aieb first to get the activation link.", true);
@@ -479,16 +547,7 @@ async function handleFinishAiebConnection(id) {
       );
     }
 
-    const cfg = (await readJsonFile(configPath)) || {};
-    cfg.device_token = payload.device_token;
-    cfg.device_ref = payload.device_ref || cfg.device_ref || "";
-    cfg.connected_at = new Date().toISOString();
-    delete cfg.license_key;
-    await writeJsonFile(configPath, cfg);
-    await fs.rm(pendingActivationPath, { force: true });
-    sessionDeviceToken = payload.device_token;
-    sessionKey = "";
-    session = null;
+    await persistDeviceToken(payload);
     return toolResult(
       id,
       "AI Employee Builder is securely connected. Continue the user's original task now; no restart or reload is needed."
@@ -519,9 +578,12 @@ const GET_SKILL_FALLBACK_TOOL = {
 
 function withLocalTools(tools) {
   const list = Array.isArray(tools) && tools.length ? tools : [GET_SKILL_FALLBACK_TOOL];
+  // activate_license is retired: its handler stays callable for clients that
+  // cached it, but it is no longer advertised — advertising a tool whose own
+  // description says "retired" just wastes a model turn.
   const names = new Set([CONNECT_TOOL.name, FINISH_CONNECT_TOOL.name, LEGACY_ACTIVATE_TOOL.name]);
   const filtered = list.filter((tool) => !names.has(tool?.name));
-  return [...filtered, CONNECT_TOOL, FINISH_CONNECT_TOOL, LEGACY_ACTIVATE_TOOL];
+  return [...filtered, CONNECT_TOOL, FINISH_CONNECT_TOOL];
 }
 
 async function handleLegacyActivate(id) {
