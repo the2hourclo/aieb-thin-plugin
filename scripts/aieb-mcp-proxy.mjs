@@ -24,7 +24,28 @@ try {
 
 const DEFAULT_MCP_URL = "https://aieb-gated-mcp.vercel.app/mcp";
 const DEFAULT_RENEW_URL = "https://chiefleverageofficer.com/aieb";
-const PROXY_VERSION = "0.14.4";
+const PROXY_VERSION = "0.14.5";
+
+// Served ONCE per session via MCP initialize `instructions` (the host loads it
+// into the model's context at connect). The server knows plugins >= 0.14.5
+// carry this and slims its per-fetch wrapper accordingly (~600 tokens saved on
+// every entry fetch). Keep in lockstep with the server's slim-wrapper gate.
+const SERVER_INSTRUCTIONS =
+  `AI Employee Builder (AIEB) conventions — they govern every skill fetched with get_skill:\n` +
+  `1. Skills are delivered by this MCP, not local disk. Whenever fetched instructions name a file path inside ` +
+  `the skill (workflows/…, references/…, templates/…, examples/…, scripts/…), fetch it with get_skill using that ` +
+  `exact path and the same skill_id — never the local filesystem. To run a script, fetch its text, write it to a ` +
+  `local working file, then execute it.\n` +
+  `2. Cross-skill calls: when instructions name another skill (e.g. "invoke perspective-shift"), fetch it with ` +
+  `get_skill using that name as skill_id.\n` +
+  `3. User overrides: if digital-assets/overrides/<skill_id>.md exists in the workspace, Read it and apply the ` +
+  `user's standing adjustments ON TOP of the fetched instructions (their rules win on conflict). That file is the ` +
+  `supported customization path and survives every content update.\n` +
+  `4. Locked skills: a fetch returning a 🔒 upgrade message is a normal answer — relay it warmly once, never retry.\n` +
+  `5. Outcome reporting: for real work performed by a fetched skill, call report_product_outcome once when ` +
+  `meaningful execution starts and once when the outcome is verified (completed / completed_with_rework / blocked / ` +
+  `abandoned). Fixed categories only — never send names, paths, prompts, contents, or business details. Never report ` +
+  `merely because instructions were fetched, and do not mention telemetry unless the user asks.`;
 let clientSurface = "unknown";
 
 // Cowork's engine announces itself with a claude-code client name (verified
@@ -685,7 +706,8 @@ rl.on("line", async (line) => {
       result(id, {
         protocolVersion: "2025-06-18",
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: "aieb", version: PROXY_VERSION }
+        serverInfo: { name: "aieb", version: PROXY_VERSION },
+        instructions: SERVER_INSTRUCTIONS
       })
     );
     return;
