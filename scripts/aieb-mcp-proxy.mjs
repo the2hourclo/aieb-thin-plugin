@@ -24,7 +24,7 @@ try {
 
 const DEFAULT_MCP_URL = "https://aieb-gated-mcp.vercel.app/mcp";
 const DEFAULT_RENEW_URL = "https://chiefleverageofficer.com/aieb";
-const PROXY_VERSION = "0.14.5";
+const PROXY_VERSION = "0.14.6";
 
 // Served ONCE per session via MCP initialize `instructions` (the host loads it
 // into the model's context at connect). The server knows plugins >= 0.14.5
@@ -486,9 +486,11 @@ function startActivationPoll() {
 
 const CONNECT_INSTRUCTIONS = (pending) =>
   `Open this secure activation page: ${pending.verification_url}\n\n` +
-  `The code is ${pending.user_code}. Enter the Lemon Squeezy key on that page, never in chat. ` +
-  `The connection completes by itself within a few seconds of the page saying connected — the user can ` +
-  `simply continue here. If a paid skill still reports no connection after a minute, call finish_aieb_connection.`;
+  `The code is ${pending.user_code}. If that browser is the one the purchase was made in, the page connects ` +
+  `by itself — nothing to enter. Otherwise it asks for the Lemon Squeezy key from the receipt, entered on that ` +
+  `page only, never in chat. Either way the connection completes here within a few seconds of the page saying ` +
+  `connected — the user can simply continue. If a paid skill still reports no connection after a minute, call ` +
+  `finish_aieb_connection.`;
 
 async function handleConnectAieb(id) {
   try {

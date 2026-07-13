@@ -13,7 +13,7 @@ Find and call the AIEB connector tool ending in `connect_aieb`. Tool names vary 
 
 It returns one clickable AIEB course-page URL and a short code. Give the user the link and say:
 
-> Open this page, enter the Lemon Squeezy key there, and press **Connect**. Never paste the key in this chat. A few seconds after the page says connected, the connection finishes by itself — just come back and keep going.
+> Open this page — if this is the browser you bought in, it connects by itself in a few seconds, nothing to enter. Otherwise enter the Lemon Squeezy key from your receipt on that page, never in this chat. A few seconds after the page says connected, the connection finishes by itself — just come back and keep going.
 
 Then stop and wait. Do not ask for the key, edit config files, or invent a second setup path.
 
