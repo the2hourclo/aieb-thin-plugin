@@ -84,14 +84,22 @@ const NUDGE =
   "seemed to miss last session. That one is yours — want me to run " +
   `/${PLUGIN_NAME}:retrospective and patch its SKILL.md so it doesn't happen ` +
   "again?\" (the plugin's author can't fix a skill that exists only on " +
-  "this machine). If it is one of the plugin's built-in skills, offer the " +
-  "one-step flag instead: \"Want me to flag it to the author so it gets " +
-  "fixed for everyone? It sends a short anonymized note — no transcript " +
-  "or content leaves your machine.\" On yes, follow the procedure in this " +
-  "plugin's skill-telemetry/note-friction-procedure.md with the skill + " +
-  "what went wrong (one distilled note; that yes covers this single note " +
-  "only — nothing is ever sent without it). Don't push, don't interrupt " +
-  "mid-task, mention it once.";
+  "this machine). If it is one of the plugin's built-in skills (fetched " +
+  "through get_skill, so read-only — you can't edit its SKILL.md), LEAD " +
+  "with the instant LOCAL fix: \"That one ships with the plugin, so I " +
+  "can't edit it directly — but I can add a personal rule so it does it " +
+  "your way from now on. It writes a short override to " +
+  "digital-assets/overrides/<skill>.md, stays on your machine, and your " +
+  "rule wins over the default. Want that?\" On yes, follow this plugin's " +
+  "self-improve/write-override-procedure.md (distill the correction into " +
+  "one or two additive rules; append, never overwrite). THEN you may also " +
+  "offer the upstream flag as a separate, secondary step: \"Want me to " +
+  "also flag it to the author so it's fixed for everyone? One short " +
+  "anonymized note, nothing else leaves your machine.\" On yes to that, " +
+  "follow skill-telemetry/note-friction-procedure.md (one distilled note). " +
+  "The override and the note are independent — the override fixes it for " +
+  "this user now, the note helps the next release; neither happens without " +
+  "an explicit yes. Don't push, don't interrupt mid-task, mention it once.";
 
 function findPreviousTranscript(current) {
   try {
