@@ -21,6 +21,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { stateFilePath } from "./lib/state.mjs";
 
 const PLUGIN_NAME = "ai-employee-builder";
 const MAX_NUDGES = 3;
@@ -49,6 +50,8 @@ function logEvent(stage, fields = {}) {
 
 function isFreshWorkspace(cwd) {
   try {
+    // Unified state file (progress-state.yaml) present → onboarding at least started.
+    if (fs.existsSync(stateFilePath(cwd))) return false;
     if (fs.existsSync(path.join(cwd, ".claude-state", "onboarding-progress.json"))) return false;
     const skillsPath = path.join(cwd, ".claude", "skills");
     if (fs.existsSync(skillsPath) && fs.statSync(skillsPath).isDirectory()) return false;

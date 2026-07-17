@@ -18,6 +18,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { readState, onboardingComplete as stOnboardingComplete, nextNudge } from "./lib/state.mjs";
 
 const PLUGIN_NAME = "ai-employee-builder";
 const MAX_NUDGES = 3;
@@ -113,7 +114,7 @@ function bumpCount(counterFile, cwd, newCount) {
   }
 }
 
-const NUDGE =
+const NUDGE_GENERIC =
   `[${PLUGIN_NAME} hook] This workspace has finished onboarding and still has a build ` +
   "roadmap to work through. When there's a natural opening (after acknowledging the " +
   'user\'s actual first request, not instead of it), offer ONCE, casually: "Want to ' +
@@ -122,6 +123,25 @@ const NUDGE =
   "something specific, let them get to it; if they decline, accept it and stay " +
   "silent. If their first message is already about the roadmap or what to build next, " +
   "just invoke the `roadmap` skill — don't double-offer.";
+
+// Turn the state's `next` block into a SPECIFIC nudge — the whole point of the state
+// layer: Claude opens already knowing the roadmap, so the user is never lost.
+function buildNudge(n) {
+  const head =
+    `[${PLUGIN_NAME} hook] This workspace finished onboarding and its build state has a next move ready. ` +
+    "When there's a natural opening (after acknowledging the user's actual first request, not instead of it), " +
+    "offer ONCE, casually: ";
+  const tail =
+    " Don't push — if the user is clearly here to do something specific, let them get to it; if they decline, " +
+    "accept it and stay silent. If their first message is already about the roadmap or building, just act on it " +
+    "— don't double-offer.";
+  if (n.blocker) {
+    const what = n.item && n.item.build ? n.item.build : "your next build";
+    return head + `"Heads up — ${what} is ready to build except for one thing: ${n.blocker}. Want to sort that out so I can build it for you?"` + tail;
+  }
+  if (n.say) return head + `"${n.say}"` + tail;
+  return NUDGE_GENERIC;
+}
 
 async function readStdin() {
   if (process.stdin.isTTY) return "";
@@ -149,13 +169,20 @@ async function main() {
 
   const cwd = typeof event.cwd === "string" && event.cwd ? event.cwd : process.cwd();
 
-  if (!onboardingComplete(cwd)) {
-    logEvent("not-onboarded");
-    return;
-  }
-  if (!roadmapUnfinished(cwd)) {
-    logEvent("ladder-complete");
-    return;
+  // Prefer the unified state file (progress-state.yaml) — its `next` block gives a
+  // SPECIFIC nudge. Fall back to the legacy .claude-state/*.json (generic nudge) for
+  // buyers not yet migrated.
+  const state = readState(cwd);
+  let nudgeText;
+  if (state) {
+    if (!stOnboardingComplete(state)) { logEvent("not-onboarded", { src: "yaml" }); return; }
+    const n = nextNudge(state);
+    if (!n || !n.hasWork) { logEvent("ladder-complete", { src: "yaml" }); return; }
+    nudgeText = buildNudge(n);
+  } else {
+    if (!onboardingComplete(cwd)) { logEvent("not-onboarded", { src: "legacy" }); return; }
+    if (!roadmapUnfinished(cwd)) { logEvent("ladder-complete", { src: "legacy" }); return; }
+    nudgeText = NUDGE_GENERIC;
   }
 
   const counterFile = counterPath(cwd);
@@ -170,7 +197,7 @@ async function main() {
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "SessionStart",
-        additionalContext: NUDGE
+        additionalContext: nudgeText
       }
     })
   );
