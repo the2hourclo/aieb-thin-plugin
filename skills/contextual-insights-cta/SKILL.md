@@ -1,6 +1,6 @@
 ---
 name: contextual-insights-cta
-description: "Writing employee · Write CTAs that continue the conversation instead of interrupting it. Three-element structure (concept link, curiosity bridge, soft CTA) that makes the offer feel inevitable. USE WHEN user says 'write CTA', 'improve this CTA', 'CTA feels generic', 'make the CTA better', 'contextual CTA', 'the offer feels plugged in'."
+description: "Writing employee · Write CTAs that continue the conversation instead of interrupting it. Three-element structure (concept link, curiosity bridge, soft CTA) that makes the offer feel inevitable, plus the 7-Element Close checklist (Bridge, Value Stack, Price Reveal, Risk Reversal, Objection Handling, Urgency, Decisive Action) for full paid-offer closes. USE WHEN user says 'write CTA', 'improve this CTA', 'CTA feels generic', 'make the CTA better', 'contextual CTA', 'the offer feels plugged in', 'write the close', 'check the close', 'closing section', '7 elements of a close'."
 user-invocable: false
 ---
 
