@@ -224,7 +224,12 @@ async function main() {
   const legacy = readOnboardingProgress(cwd);
   if (unified && !onboardingComplete(unified)) {
     const ob = unified.onboarding && typeof unified.onboarding === "object" ? unified.onboarding : {};
-    const bits = [summarizePhases(ob.phases), typeof ob.current_step === "string" ? `current step: "${ob.current_step}"` : ""]
+    const nx = unified.next && typeof unified.next === "object" ? unified.next : {};
+    const bits = [
+      summarizePhases(ob.phases),
+      typeof ob.current_step === "string" ? `current step: "${ob.current_step}"` : "",
+      typeof nx.say === "string" && nx.say.trim() ? `the recorded next move: "${nx.say.trim()}"` : ""
+    ]
       .filter(Boolean)
       .join("; ");
     process.stdout.write(

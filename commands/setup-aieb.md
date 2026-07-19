@@ -36,7 +36,7 @@ Call `get_skill` with `skill_id: meta-create-skill`, `path: SKILL.md`. If it suc
 
 Right after the first successful verification on this machine, check the workspace for `.claude-state/onboarding-progress.json`:
 
-- **No state file (fresh workspace):** do NOT stop at "connected." Say one transition line — "Connected. Next I'll set up your workspace and walk you through hiring your first AI Employee — takes about 10 minutes." — then fetch `get_skill` with `skill_id: onboard`, `path: SKILL.md` and follow it end to end (it scaffolds the workspace, installs the Business OS, and hires the first AI [Role] Employee). Its own flow asks every question that matters, so don't add a separate are-you-sure gate in front of it.
+- **No state file (fresh workspace):** do NOT stop at "connected." Say one transition line — "Connected. Next I'll set up your workspace and install your Business OS — about 10 minutes." — then fetch `get_skill` with `skill_id: onboard`, `path: SKILL.md` and follow it end to end (it scaffolds the workspace and installs the Business OS, then points at the first build checkpoint — mapping the business with the X-Ray — which runs in its own fresh window, not this one). Its own flow asks every question that matters, so don't add a separate are-you-sure gate in front of it.
 - **State file with `completed_at` set** (a reconnect, or a second machine on an already-onboarded workspace): never re-onboard. Confirm the connection and move on; if the managed CLAUDE.md block is missing or behind the server's template version, offer a refresh via `check-setup`.
 - **State file in progress:** resume onboarding from its `current_step` instead of restarting.
 
