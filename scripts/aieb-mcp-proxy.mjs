@@ -1,5 +1,6 @@
 import readline from "node:readline";
 import fs from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -24,7 +25,22 @@ try {
 
 const DEFAULT_MCP_URL = "https://aieb-gated-mcp.vercel.app/mcp";
 const DEFAULT_RENEW_URL = "https://chiefleverageofficer.com/aieb";
-const PROXY_VERSION = "0.14.6";
+// Stamped on every request as X-AIEB-Plugin-Version — the server compares it to
+// the released version to decide whether to nag the buyer to update. Read from
+// the plugin manifest so it can never drift from the real release again: a
+// hardcoded "0.14.6" here survived three releases and had the server telling
+// fully-updated buyers to update forever (caught 2026-07-19).
+const PROXY_VERSION = (() => {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(new URL("../.claude-plugin/plugin.json", import.meta.url), "utf8")
+    );
+    if (typeof manifest.version === "string" && manifest.version.trim()) return manifest.version.trim();
+  } catch {
+    // fall through to the pinned fallback
+  }
+  return "0.17.2";
+})();
 
 // Served ONCE per session via MCP initialize `instructions` (the host loads it
 // into the model's context at connect). The server knows plugins >= 0.14.5
