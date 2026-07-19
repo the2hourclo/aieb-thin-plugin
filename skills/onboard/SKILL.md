@@ -1,6 +1,6 @@
 ---
 name: onboard
-description: Setup employee · First-run setup for the ai-employee-builder plugin. Scaffolds the authoring folders (.claude/skills|agents|commands|hooks), writes a workspace CLAUDE.md with skill routing + a hire-your-first-AI-Employee primer, and walks you through hiring your first AI [Role] Employee (an AI Sales Employee, AI Content Employee, and so on). USE WHEN user says "onboard me", "set me up", "get me started", "start my workspace", "bootstrap my workspace", "first time setup", "build my workspace", OR when you detect a fresh workspace (no .claude-state/onboarding-progress.json) and the user has just installed the ai-employee-builder plugin.
+description: Setup employee · First-run setup for the ai-employee-builder plugin. Scaffolds the authoring folders (.claude/skills|agents|commands|hooks), writes a workspace CLAUDE.md with skill routing, and installs the Business OS (department folders + BUSINESS-MAP.md) — then hands off to the tracked build journey, whose first checkpoint is mapping the business with the Business X-Ray. USE WHEN user says "onboard me", "set me up", "get me started", "start my workspace", "bootstrap my workspace", "first time setup", "build my workspace", OR when you detect a fresh workspace (no .claude-state/onboarding-progress.json) and the user has just installed the ai-employee-builder plugin.
 ---
 
 # onboard — MCP loader

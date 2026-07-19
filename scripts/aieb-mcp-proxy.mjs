@@ -39,7 +39,7 @@ const PROXY_VERSION = (() => {
   } catch {
     // fall through to the pinned fallback
   }
-  return "0.19.0";
+  return "0.19.1";
 })();
 
 // Served ONCE per session via MCP initialize `instructions` (the host loads it
