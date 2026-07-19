@@ -2,9 +2,23 @@
 /**
  * SessionStart hook (Node port of onboard_nudge.py — Node is guaranteed on
  * buyer machines because the connector runs on it; Python is not on stock
- * Windows): offer onboarding when the workspace looks fresh.
+ * Windows): offer onboarding when the workspace looks fresh, and RESUME
+ * onboarding when it started but never finished.
+ *
+ * Three workspace states, three behaviors (mutually exclusive with
+ * roadmap_nudge, which owns the post-onboarding ladder):
+ *   - FRESH (no state, no skills)      → offer onboarding (max 3 nudges)
+ *   - MID-ONBOARDING (state, not done) → inject the resume context EVERY
+ *     session, with the current phase/step, so a buyer who says "hi" gets
+ *     picked up exactly where they left off (e.g. scaffold done, Business
+ *     X-Ray in progress → resume the X-Ray). No cap: this is situational
+ *     awareness, not a nag — the text tells the model to follow the user's
+ *     lead. (Origin: 2026-07-19 — mid-onboarding was a dead zone: onboard_nudge
+ *     saw "not fresh", roadmap_nudge saw "not onboarded", nobody spoke.)
+ *   - ONBOARDED → silent; roadmap_nudge takes over.
  *
  * "Fresh" = onboarding has never run here AND no skills have been authored:
+ *   - no `.claude-state/progress-state.yaml`, AND
  *   - no `.claude-state/onboarding-progress.json`, AND
  *   - no `.claude/skills/` folder.
  *
@@ -21,7 +35,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { stateFilePath } from "./lib/state.mjs";
+import { stateFilePath, readState, onboardingComplete } from "./lib/state.mjs";
 
 const PLUGIN_NAME = "ai-employee-builder";
 const MAX_NUDGES = 3;
@@ -131,6 +145,41 @@ const NUDGE_ACTIVATED =
   "says no, accept it gracefully and stay silent. If their first message is already " +
   "about onboarding, just run it — don't double-offer.";
 
+// Legacy per-phase progress file written by the onboard skill. Returns the
+// parsed object or null; a file with completed_at set is NOT mid-flight.
+function readOnboardingProgress(cwd) {
+  try {
+    const p = path.join(cwd, ".claude-state", "onboarding-progress.json");
+    if (!fs.existsSync(p)) return null;
+    const data = JSON.parse(fs.readFileSync(p, "utf8"));
+    return data && typeof data === "object" && !Array.isArray(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+// Compact human-readable summary of where onboarding stands, e.g.
+// "scaffold: completed · business-os: completed · first-skill: in-progress".
+function summarizePhases(phases) {
+  if (!phases || typeof phases !== "object" || Array.isArray(phases)) return "";
+  return Object.entries(phases)
+    .map(([name, status]) => `${name}: ${status}`)
+    .join(" · ");
+}
+
+function buildResumeNudge(detail) {
+  return (
+    `[${PLUGIN_NAME} hook] This workspace is MID-ONBOARDING — setup started here but never finished.` +
+    (detail ? ` Where it stands: ${detail}.` : "") +
+    " If the user's first message is a greeting or open-ended ('hi', 'what's next', 'where were we'), " +
+    "pick the thread up: say in ONE line where you both left off, then continue from the current step — " +
+    "fetch `get_skill` with `skill_id: onboard`, `path: SKILL.md` and let it resume (it skips completed " +
+    "phases; if the in-progress step is the Business X-Ray, it hands off to `business-x-ray`, which " +
+    "resumes its own map rather than restarting). NEVER restart onboarding from scratch. If the user " +
+    "came to do something specific, do their thing first and offer the resume once, at a natural pause."
+  );
+}
+
 const NUDGE_NOT_ACTIVATED =
   `[${PLUGIN_NAME} hook] The ai-employee-builder plugin is installed but no license is ` +
   "connected on this machine yet, so paid skills (including onboarding) would hit the " +
@@ -167,6 +216,37 @@ async function main() {
   if (event.source === "compact") return;
 
   const cwd = typeof event.cwd === "string" && event.cwd ? event.cwd : process.cwd();
+
+  // MID-ONBOARDING: started but not finished → inject resume context every
+  // session (uncapped — situational awareness, not a nag) and stop here.
+  // Prefer the unified progress-state.yaml; fall back to the legacy JSON.
+  const unified = readState(cwd);
+  const legacy = readOnboardingProgress(cwd);
+  if (unified && !onboardingComplete(unified)) {
+    const ob = unified.onboarding && typeof unified.onboarding === "object" ? unified.onboarding : {};
+    const bits = [summarizePhases(ob.phases), typeof ob.current_step === "string" ? `current step: "${ob.current_step}"` : ""]
+      .filter(Boolean)
+      .join("; ");
+    process.stdout.write(
+      JSON.stringify({
+        hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: buildResumeNudge(bits) }
+      })
+    );
+    logEvent("resume-context-emitted", { src: "yaml" });
+    return;
+  }
+  if (!unified && legacy && !legacy.completed_at) {
+    const bits = [summarizePhases(legacy.phases), typeof legacy.current_step === "string" ? `current step: "${legacy.current_step}"` : ""]
+      .filter(Boolean)
+      .join("; ");
+    process.stdout.write(
+      JSON.stringify({
+        hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: buildResumeNudge(bits) }
+      })
+    );
+    logEvent("resume-context-emitted", { src: "legacy" });
+    return;
+  }
 
   if (!isFreshWorkspace(cwd)) {
     logEvent("not-fresh");

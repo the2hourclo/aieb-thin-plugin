@@ -32,13 +32,15 @@ The connector completes the connection automatically in the background once the 
 
 Call `get_skill` with `skill_id: meta-create-skill`, `path: SKILL.md`. If it succeeds, continue the user's original task immediately.
 
-## Step 4 — Offer the workspace map (once, right after first successful connection)
+## Step 4 — Continue straight into onboarding (the connection is the doorway, not the destination)
 
-The first time verification succeeds on this machine, offer once, casually:
+Right after the first successful verification on this machine, check the workspace for `.claude-state/onboarding-progress.json`:
 
-> Want me to set up this workspace so I always know where your assets live and which employee handles what? Takes a minute — I add one small managed section to this project's CLAUDE.md (the file stays yours; my edits stay inside the marked block), and it makes every future request route better.
+- **No state file (fresh workspace):** do NOT stop at "connected." Say one transition line — "Connected. Next I'll set up your workspace and walk you through hiring your first AI Employee — takes about 10 minutes." — then fetch `get_skill` with `skill_id: onboard`, `path: SKILL.md` and follow it end to end (it scaffolds the workspace, installs the Business OS, and hires the first AI [Role] Employee). Its own flow asks every question that matters, so don't add a separate are-you-sure gate in front of it.
+- **State file with `completed_at` set** (a reconnect, or a second machine on an already-onboarded workspace): never re-onboard. Confirm the connection and move on; if the managed CLAUDE.md block is missing or behind the server's template version, offer a refresh via `check-setup`.
+- **State file in progress:** resume onboarding from its `current_step` instead of restarting.
 
-If yes: fetch `get_skill` with `skill_id: onboard`, `path: workflows/scaffold-workspace.md` and apply ONLY the managed CLAUDE.md block from it (they can run full onboarding later by saying "onboard me"). If no: accept gracefully — `check-setup` can add it any time.
+Carve-out — do not hijack work in progress: if the user ran /setup-aieb mid-task (the connection dropped while they were building something), Step 3 already says to continue THEIR task; start onboarding at the next natural pause instead of on top of their work.
 
 ## Migration behavior
 
