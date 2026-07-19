@@ -1,5 +1,5 @@
 ---
-description: Securely connect AI Employee Builder through one activation link. The Lemon Squeezy key is entered on the AIEB page, never in chat, and setup takes effect without a restart.
+description: Securely connect AI Employee Builder through one activation link. The Lemon Squeezy key is entered on the AIEB page, never in chat, and setup takes effect without a restart. Not to be confused with Anthropic's /setup-cowork, which configures the Cowork app itself — this command is the one that connects your AI Employee Builder purchase.
 allowed-tools: [Read, Write, Edit, Bash]
 ---
 

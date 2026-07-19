@@ -13,7 +13,7 @@
       "name": "ai-employee-builder",
       "source": "./",
       "description": "Public AI Employee Builder plugin shell. It contains setup guidance and a local MCP proxy; paid skill instructions are served at runtime by the gated AIEB MCP server.",
-      "version": "0.17.2",
+      "version": "0.17.3",
       "author": {
         "name": "Rashid Khamis",
         "email": "rashid@thepeakperformer.io"
