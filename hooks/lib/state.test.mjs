@@ -50,11 +50,9 @@ roadmap:
 ladder:
   1-onboard: done
   2-map: done
-  3-harness: in_progress
+  3-first-skill: in_progress
   4-system: pending
-  5-agent: pending
-  6-command: pending
-  7-autopilot: pending
+  5-autonomy: pending
 
 built:
   skills: [write, perspective-shift]
@@ -112,8 +110,8 @@ check("roadmap: block list of maps with flow-list values", () => {
 });
 check("ladder: map of stage→status", () => {
   assert.strictEqual(s.ladder["1-onboard"], "done");
-  assert.strictEqual(s.ladder["3-harness"], "in_progress");
-  assert.strictEqual(s.ladder["7-autopilot"], "pending");
+  assert.strictEqual(s.ladder["3-first-skill"], "in_progress");
+  assert.strictEqual(s.ladder["5-autonomy"], "pending");
 });
 check("built: flow lists + boolean + empty lists", () => {
   assert.deepStrictEqual(s.built.skills, ["write", "perspective-shift"]);
@@ -156,11 +154,9 @@ check("onboardingComplete false when completed_at null", () => {
 // all ladder done → ladderUnfinished false
 check("ladderUnfinished false when all done/skipped", () => {
   const done = parseYaml(SAMPLE
-    .replace("3-harness: in_progress", "3-harness: done")
-    .replace("4-system: pending", "4-system: done")
-    .replace("5-agent: pending", "5-agent: skipped")
-    .replace("6-command: pending", "6-command: done")
-    .replace("7-autopilot: pending", "7-autopilot: done"));
+    .replace("3-first-skill: in_progress", "3-first-skill: done")
+    .replace("4-system: pending", "4-system: skipped")
+    .replace("5-autonomy: pending", "5-autonomy: done"));
   assert.strictEqual(ladderUnfinished(done), false);
 });
 

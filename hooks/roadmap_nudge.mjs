@@ -22,7 +22,10 @@ import { readState, onboardingComplete as stOnboardingComplete, nextNudge } from
 
 const PLUGIN_NAME = "ai-employee-builder";
 const MAX_NUDGES = 3;
-const ROADMAP_STAGES = ["3-harness", "4-system", "5-agent", "6-command", "7-autopilot"];
+// Checkpoint stages (2026-07-19 journey map). Legacy roadmap-progress.json
+// files with the old 7-stage names read as "new stages missing → pending →
+// unfinished", so migration needs no special case here.
+const ROADMAP_STAGES = ["3-first-skill", "4-system", "5-autonomy"];
 
 function claudeRoot() {
   const home = process.env.USERPROFILE || process.env.HOME || os.homedir();

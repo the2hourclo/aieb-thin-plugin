@@ -14,7 +14,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 const STATE_REL = [".claude-state", "progress-state.yaml"];
-const LADDER_STAGES = ["3-harness", "4-system", "5-agent", "6-command", "7-autopilot"];
+// The post-map build checkpoints from the buyer-journey map (2026-07-19):
+// first skill → skill system → make-it-run-itself. A legacy file with the old
+// 7-stage names simply reads as "these stages missing → pending → unfinished",
+// which keeps the nudge alive until the roadmap skill rewrites the ladder.
+const LADDER_STAGES = ["3-first-skill", "4-system", "5-autonomy"];
 
 // ---- scalar + flow parsing -------------------------------------------------
 
