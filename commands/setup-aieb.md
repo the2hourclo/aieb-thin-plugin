@@ -7,6 +7,22 @@ allowed-tools: [Read, Write, Edit, Bash]
 
 Connect this machine with the shortest secure path. The paid instructions stay on the AIEB server; customer business data stays local.
 
+**What this actually asks of the user:** a browser, and about a minute. In most cases nothing to type at all — if they open the link in the browser they bought in, the page recognises the purchase and connects itself. The license key is the fallback, not the default. Say it that way; "have your license key ready" makes an easy step sound like work.
+
+## Step 0 — Before the link: the plugin has to be current
+
+The secure setup tools (`connect_aieb`, `finish_aieb_connection`) landed in plugin **v0.17.0**. On anything older this command has nothing to call, and telling the user to "run connect_aieb" sends them looking for a tool that isn't there.
+
+So if a `connect_aieb` tool cannot be found after a real tool search, do not improvise a workaround — the plugin is out of date. Give these three steps in order and stop:
+
+```
+/plugin install ai-employee-builder@aieb-thin-plugin
+/reload-plugins
+/setup-aieb
+```
+
+That sequence updates the shell and reopens this flow. Their paid skills are unaffected — skill content is served fresh from the server and never needed an update.
+
 ## Step 1 — Start the secure connection
 
 Find and call the AIEB connector tool ending in `connect_aieb`. Tool names vary by surface and may load lazily, so search rather than relying on the visible list.
@@ -18,6 +34,29 @@ It returns one clickable AIEB course-page URL and a short code. Give the user th
 Then stop and wait. Do not ask for the key, edit config files, or invent a second setup path.
 
 If the user only wants the free AI Employee Map, tell them no connection is required: they can simply say **map my business**.
+
+## Step 1b — When they need the key and can't find it
+
+Only reaches this point if the page did not recognise the purchase automatically. Help them find the key; never handle it yourself.
+
+**Where the key is**, in the order worth trying:
+
+1. **The Lemon Squeezy receipt email** from the original purchase. The key is a long dash-separated code shown in the email body. Searching their inbox for "Lemon Squeezy" or the product name finds it faster than scrolling.
+2. **The order page** linked from that receipt — same key, and it survives a deleted email.
+3. **Their card statement descriptor** if they can't recall which address they bought with; the receipt went to that address.
+
+**What each failure on the page means** — translate it, don't paste it:
+
+| The page says | What is actually true | What they do next |
+|---|---|---|
+| Key not accepted / not found | The code was mistyped, or it belongs to a different store | Re-copy the whole code from the receipt with no leading or trailing spaces |
+| Subscription cancelled or expired | The key is real; the plan lapsed | Resume or renew in Lemon Squeezy, then re-run `/setup-aieb` — the same connection comes back, nothing to reinstall |
+| Not part of this plan | They bought a different product | Say which plan the skill belongs to and point at the plan page; do not try to force the connection |
+| Activation limit reached | The key is already used on its allowed machines | Tell them to say so — the limit is lifted from our side, this is not something they can fix alone |
+
+**Never accept the key in chat, in any form.** If they paste it anyway, do not repeat it back, do not write it to a file, and do not put it in a command. Tell them plainly that it only works on the activation page, and give them the link again. A key pasted in chat should be treated as exposed — mention that rotating it later is wise, then move on without lecturing.
+
+If they cannot find the key at all, that is a support moment, not a dead end: tell them to reply to their purchase receipt or reach out, and their access can be restored from our side without the key.
 
 ## Step 2 — Confirm when the user returns
 
@@ -45,6 +84,8 @@ Carve-out — do not hijack work in progress: if the user ran /setup-aieb mid-ta
 ## Migration behavior
 
 Existing users with a legacy saved Lemon Squeezy key continue working during migration. Once secure browser activation succeeds, the proxy deletes the saved key and keeps only the revocable AIEB device token.
+
+**Running this on a setup that already works is normal, not a mistake.** Most existing members are still on the older key-on-disk setup; it validates fine until the day a client forgets to send its activation, and then it fails in a way that looks like a billing problem and isn't. Someone arriving here from a "connection upgrade available" nudge should be reassured on both counts: nothing is broken, and the upgrade takes under a minute. Their skills, workspace, and progress all carry over untouched — only where the credential lives changes.
 
 ## Non-negotiable rules
 
