@@ -39,7 +39,7 @@ const PROXY_VERSION = (() => {
   } catch {
     // fall through to the pinned fallback
   }
-  return "0.24.0";
+  return "0.25.0";
 })();
 
 // Served ONCE per session via MCP initialize `instructions` (the host loads it
@@ -461,8 +461,20 @@ const CONNECT_TOOL = {
   description:
     "Start or repair the secure AI Employee Builder connection. Call this when setup is needed or a paid " +
     "skill says the connection is missing. It returns one safe activation link. The user opens it and " +
-    "enters their Lemon Squeezy key on the AIEB page, never in chat.",
-  inputSchema: { type: "object", properties: {} }
+    "enters their Lemon Squeezy key on the AIEB page, never in chat. Pass reconnect: true only when the " +
+    "user explicitly asks to connect again on a machine that already works — switching to a different " +
+    "subscription or account, or re-doing setup deliberately.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      reconnect: {
+        type: "boolean",
+        description:
+          "Force a fresh activation even though this machine is already connected. Only ever set from an " +
+          "explicit user request; never to 'refresh' a connection that is working."
+      }
+    }
+  }
 };
 
 const FINISH_CONNECT_TOOL = {
@@ -566,11 +578,22 @@ const CONNECT_INSTRUCTIONS = (pending) =>
   `connected — the user can simply continue. If a paid skill still reports no connection after a minute, call ` +
   `finish_aieb_connection.`;
 
-async function handleConnectAieb(id) {
+async function handleConnectAieb(id, args = {}) {
   try {
     const resolved = await resolveConfig();
-    if (resolved.deviceToken?.startsWith("aieb_v1_")) {
-      return toolResult(id, "AI Employee Builder is already securely connected on this machine. Continue the user's task now.");
+    // A working machine short-circuits — re-activating a healthy connection is
+    // pure friction. But `reconnect` has to exist, because without it the ONLY
+    // way off this branch was deleting ~/.aieb-mcp/config.json by hand, and
+    // "open your home folder and delete a JSON file" is not an instruction to
+    // give a business owner. Real cases: moving the machine to a different
+    // subscription, a support rep re-minting a device, or testing the flow.
+    if (resolved.deviceToken?.startsWith("aieb_v1_") && !args.reconnect) {
+      return toolResult(
+        id,
+        "AI Employee Builder is already securely connected on this machine. Continue the user's task now. " +
+          "If they explicitly want to connect again — a different subscription or account, or redoing setup " +
+          "on purpose — call this tool again with reconnect: true."
+      );
     }
 
     const existing = await readJsonFile(pendingActivationPath);
@@ -797,7 +820,7 @@ rl.on("line", async (line) => {
     return;
   }
   if (method === "tools/call" && message.params?.name === CONNECT_TOOL.name) {
-    writeMessage(await handleConnectAieb(id));
+    writeMessage(await handleConnectAieb(id, message.params?.arguments || {}));
     return;
   }
   if (method === "tools/call" && message.params?.name === FINISH_CONNECT_TOOL.name) {

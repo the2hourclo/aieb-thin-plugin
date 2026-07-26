@@ -71,6 +71,12 @@ The connector completes the connection automatically in the background once the 
 
 Call `get_skill` with `skill_id: meta-create-skill`, `path: SKILL.md`. If it succeeds, continue the user's original task immediately.
 
+**Already connected?** Say so in one line and move on — re-activating a working connection is pure friction. But add the escape hatch in the same breath, because it is otherwise invisible: *"Already connected. If you ever need to connect this machine to a different subscription or account, just say reconnect."*
+
+**If the user asks to reconnect** — "reconnect", "set it up again", "connect a different account", "use my other subscription", or they say the connection belongs to the wrong person — call `connect_aieb` with `reconnect: true` and run Step 1 normally. Without that argument the tool refuses on an already-connected machine, and the only alternative is hand-deleting a file in their home folder, which is never an instruction to give a business owner.
+
+Do NOT pass `reconnect: true` on your own initiative to "refresh" a connection that is working.
+
 ## Step 4 — Continue straight into onboarding (the connection is the doorway, not the destination)
 
 Right after the first successful verification on this machine, check the workspace for `.claude-state/onboarding-progress.json`:
