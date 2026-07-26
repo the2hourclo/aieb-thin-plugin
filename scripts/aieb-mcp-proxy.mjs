@@ -39,7 +39,7 @@ const PROXY_VERSION = (() => {
   } catch {
     // fall through to the pinned fallback
   }
-  return "0.22.0";
+  return "0.23.0";
 })();
 
 // Served ONCE per session via MCP initialize `instructions` (the host loads it
@@ -178,6 +178,11 @@ async function resolveConfig() {
     cleanValue(cfg.AIEB_ACTIVATE_URL) ||
     remoteUrl.replace(/\/mcp\/?$/, "/activate");
 
+  const deviceUpgradeUrl =
+    cleanValue(process.env.AIEB_DEVICE_UPGRADE_URL) ||
+    cleanValue(cfg.AIEB_DEVICE_UPGRADE_URL) ||
+    remoteUrl.replace(/\/mcp\/?$/, "/device/upgrade");
+
   const deviceStartUrl =
     cleanValue(process.env.AIEB_DEVICE_START_URL) ||
     cleanValue(cfg.AIEB_DEVICE_START_URL) ||
@@ -187,7 +192,7 @@ async function resolveConfig() {
     cleanValue(cfg.AIEB_DEVICE_STATUS_URL) ||
     remoteUrl.replace(/\/mcp\/?$/, "/device/status");
 
-  return { candidates, deviceToken, remoteUrl, activateUrl, deviceStartUrl, deviceStatusUrl, cfg };
+  return { candidates, deviceToken, remoteUrl, activateUrl, deviceUpgradeUrl, deviceStartUrl, deviceStatusUrl, cfg };
 }
 
 function fingerprint(value) {
@@ -304,10 +309,53 @@ async function activate(key, licenseKey, activateUrl) {
 // is not a verdict on any key). With NO candidates the session is KEYLESS —
 // requests forward without Authorization so the server's free tier answers and
 // its own guidance (free map vs broken setup vs not-a-member) takes over.
+// Silent legacy upgrade. A machine still holding a license key trades it for a
+// device token by itself — no link, no click, nothing said to the buyer. On
+// 2026-07-26 nearly the whole paying base was still on the key path, and asking
+// each of them to re-run setup was never going to convert them.
+//
+// Best-effort in every direction: any failure leaves the key exactly where it
+// was and the legacy path carries on working, so a buyer can never be worse off
+// for having tried. Attempted at most once per process — a server that refuses
+// (lapsed plan, outage) must not be re-asked on every message.
+let upgradeAttempted = false;
+
+async function upgradeLegacyKey(licenseKey, deviceUpgradeUrl) {
+  if (upgradeAttempted) return false;
+  upgradeAttempted = true;
+  try {
+    const state = await readState();
+    const key = fingerprint(licenseKey);
+    const response = await fetch(deviceUpgradeUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${licenseKey}`
+      },
+      body: JSON.stringify({
+        // Reuse the id this install already activated under, so the upgrade
+        // lands on the same device row rather than inventing a second machine.
+        device_ref: state[key]?.local_id || "",
+        device_label: `AIEB MCP - ${os.hostname() || "buyer-device"}`
+      })
+    });
+    if (!response.ok) return false;
+    const payload = await response.json().catch(() => ({}));
+    if (!payload.ok || !payload.device_token) return false;
+    // Same persistence the browser flow uses — it also deletes the stored key,
+    // which is the point: after this the machine holds only a revocable token.
+    await persistDeviceToken(payload);
+    return true;
+  } catch {
+    return false; // offline, TLS interception, server down — all non-events
+  }
+}
+
 async function ensureSession() {
   if (session) return session;
 
-  const { candidates, deviceToken, remoteUrl, activateUrl } = await resolveConfig();
+  const { candidates, deviceToken, remoteUrl, activateUrl, deviceUpgradeUrl } = await resolveConfig();
 
   if (deviceToken && deviceToken.startsWith("aieb_v1_")) {
     session = { licenseKey: deviceToken, instanceId: "", remoteUrl };
@@ -316,6 +364,16 @@ async function ensureSession() {
 
   if (!candidates.length) {
     return { licenseKey: "", instanceId: "", remoteUrl };
+  }
+
+  // A key is present and no token is. Try the silent upgrade before falling back
+  // to the key+instance path below.
+  if (await upgradeLegacyKey(candidates[0], deviceUpgradeUrl)) {
+    const upgraded = cleanValue(sessionDeviceToken);
+    if (upgraded && upgraded.startsWith("aieb_v1_")) {
+      session = { licenseKey: upgraded, instanceId: "", remoteUrl };
+      return session;
+    }
   }
 
   let lastError = null;
