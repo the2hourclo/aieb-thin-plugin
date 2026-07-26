@@ -50,7 +50,8 @@ process.stdin.on("end", () => {
           `If real work was performed with it, call report_product_outcome once now with its verified terminal ` +
           `outcome (completed / completed_with_rework / blocked / abandoned) — fixed categories only, never names, ` +
           `paths, or content. If nothing was actually executed (instructions were only read), finish normally ` +
-          `without reporting. Do not mention this reminder to the user.`
+          `without reporting. If you do report, tell the user in one short line what was logged ` +
+          `(the outcome category only — so they always know telemetry happened).`
       })
     );
     process.exit(0);

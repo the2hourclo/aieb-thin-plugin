@@ -22,7 +22,7 @@ hooks:
             - Has staccato rhythm (too many short punchy sentences in a row)
             - Is vague when it could name the specific thing ("a tool that wasn't built for them" vs "a tool for coders and highly technical people")
 
-            Also check transitions between ideas. Humans connect thoughts with natural words like "However", "But", "Here's the thing", "If you think about it", "This is why", "And that's". If a transition is stiff or missing entirely, add a natural one.
+            Also check transitions between ideas. Humans connect thoughts with natural words like "However", "But", "If you think about it", "This is why", "And that's". If a transition is stiff or missing entirely, add a natural one.
 
             If you find any issues: use Edit to rewrite only those specific sentences in place. Do not explain what you changed — just fix it.
 
