@@ -79,7 +79,11 @@ Do NOT pass `reconnect: true` on your own initiative to "refresh" a connection t
 
 ## Step 4 — Continue straight into onboarding (the connection is the doorway, not the destination)
 
-Right after the first successful verification on this machine, check the workspace for `.claude-state/onboarding-progress.json`:
+Right after the first successful verification on this machine, work out where they are.
+
+**`.claude-state/progress-state.yaml` is the source of truth.** Read it FIRST. `onboarding-progress.json` is this skill's own older phase tracker, and the two can disagree — a real workspace on 2026-07-26 had the JSON saying `completed_at: null` with a retired voice step while the YAML said onboarding finished that morning. Believe the YAML; treat the JSON as a hint only, and only when no YAML exists.
+
+Then check `.claude-state/onboarding-progress.json`:
 
 - **No state file (fresh workspace):** do NOT stop at "connected." Say one transition line — "Connected. Next I'll set up your workspace and install your Business OS — about 10 minutes." — then fetch `get_skill` with `skill_id: onboard`, `path: SKILL.md` and follow it end to end (it scaffolds the workspace and installs the Business OS, then points at the first build checkpoint — mapping the business with the X-Ray — which runs in its own fresh window, not this one). Its own flow asks every question that matters, so don't add a separate are-you-sure gate in front of it.
 - **State file with `completed_at` set** (a reconnect, or a second machine on an already-onboarded workspace): never re-onboard. Confirm the connection and move on; if the managed CLAUDE.md block is missing or behind the server's template version, offer a refresh via `check-setup`.
