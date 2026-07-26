@@ -202,7 +202,17 @@ export function readState(cwd) {
 }
 
 export function onboardingComplete(state) {
-  return Boolean(state && state.onboarding && state.onboarding.completed_at);
+  if (!state) return false;
+  if (state.onboarding && state.onboarding.completed_at) return true;
+  // The ladder is the other witness, and it is the one the SERVER trusts:
+  // checkpoint ids match these keys exactly (src/progress.mjs). Reading only
+  // `completed_at` meant a workspace whose ladder said "1-onboard: done" still
+  // opened every single session with "MID-ONBOARDING — setup started here but
+  // never finished", forever, because nothing ever went back to stamp that one
+  // field. A buyer past checkpoint 1 should be pointed at checkpoint 2, not
+  // told to redo the step they already finished (2026-07-26 audit).
+  const stage = state.ladder && typeof state.ladder === "object" ? state.ladder["1-onboard"] : null;
+  return stage === "done" || stage === "completed" || stage === "skipped";
 }
 
 // True if the generic 7-stage build ladder still has somewhere to go.

@@ -117,18 +117,28 @@ function bumpCount(counterFile, cwd, newCount) {
 // (observed in the 2026-07-10 journey audit). So the nudge checks activation
 // state and, when unconnected, leads with /setup-aieb instead.
 function isActivated() {
-  // Any non-trivial state file in ~/.aieb-mcp counts (legacy config.json /
-  // activation.json, or the device-flow token store) — robust to the exact
-  // filename the proxy uses across versions.
+  // A REAL credential, not the presence of a file.
+  //
+  // This used to count any non-trivial .json in ~/.aieb-mcp, on the theory that
+  // it was robust to whichever filename the proxy used. It was robust to the
+  // wrong thing: the proxy writes config.json on its FIRST run, before anyone
+  // has connected anything, so a buyer who never activated was told "you're all
+  // set, just say onboard me" — and then hit the licence wall on their very
+  // first action. On 2026-07-26, eight of ten paying members had never
+  // connected a device, and this hook was reassuring every one of them.
+  //
+  // The only thing that means connected is a device token, which is exactly
+  // what resolveConfig() in the proxy reads (cfg.device_token, `aieb_v1_`).
+  // Anything else — a legacy licence key, a half-written config, an empty
+  // scaffold — is NOT connected, and the setup path is always the safe answer.
   try {
     const home = process.env.USERPROFILE || process.env.HOME || os.homedir();
-    const dir = path.join(home, ".aieb-mcp");
-    if (!fs.existsSync(dir)) return false;
-    return fs
-      .readdirSync(dir)
-      .some((f) => f.endsWith(".json") && !f.startsWith("pending") && fs.statSync(path.join(dir, f)).size > 2);
+    const configFile = path.join(home, ".aieb-mcp", "config.json");
+    if (!fs.existsSync(configFile)) return false;
+    const cfg = JSON.parse(fs.readFileSync(configFile, "utf8"));
+    return typeof cfg?.device_token === "string" && cfg.device_token.startsWith("aieb_v1_");
   } catch {
-    // unreadable state = treat as not activated; the setup path is always safe
+    // unreadable or malformed state = treat as not activated
   }
   return false;
 }
@@ -185,11 +195,12 @@ const NUDGE_NOT_ACTIVATED =
   "connected on this machine yet, so paid skills (including onboarding) would hit the " +
   "license wall. When there's a natural opening (after acknowledging the user's actual " +
   'first request, not instead of it), offer ONCE, casually: "I see AI Employee Builder ' +
-  "is installed but not connected yet — run /setup-aieb to link your license (about 2 " +
-  "minutes; members get the key with their purchase). After that, say 'onboard me' and " +
+  "is installed but not connected yet — run /setup-aieb. It gives you one secure link; " +
+  "on that page you click Continue with Google with the address you bought with, and " +
+  "that's it, nothing to type. Takes about a minute. After that, say 'onboard me' and " +
   "I'll set up your workspace and first skill. And if you came for the free AI Employee " +
-  "Map, that works right now with no key — just say 'map my business'.\" If the user " +
-  "says no, accept it gracefully and stay silent.";
+  "Map, that works right now with no account at all — just say 'map my business'.\" If " +
+  "the user says no, accept it gracefully and stay silent.";
 
 async function readStdin() {
   if (process.stdin.isTTY) return "";

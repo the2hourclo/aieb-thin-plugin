@@ -146,10 +146,20 @@ check("nextNudge: blocker set → not ready", () => {
   assert.strictEqual(n.ready, false);
   assert.strictEqual(n.blocker, "youtube connector not wired");
 });
-// pre-onboarding: completed_at null → onboardingComplete false
-check("onboardingComplete false when completed_at null", () => {
-  const fresh = parseYaml(SAMPLE.replace("completed_at: 2026-07-16", "completed_at: null"));
+// pre-onboarding: nothing says it finished → onboardingComplete false
+check("onboardingComplete false when no witness says finished", () => {
+  const fresh = parseYaml(
+    SAMPLE.replace("completed_at: 2026-07-16", "completed_at: null").replace("1-onboard: done", "1-onboard: pending")
+  );
   assert.strictEqual(onboardingComplete(fresh), false);
+});
+// The ladder is the SECOND witness, and the one the server's checkpoints match.
+// Without it, a workspace that finished checkpoint 1 but never got completed_at
+// stamped opened every session with "MID-ONBOARDING — never finished", forever.
+check("onboardingComplete true from the ladder alone", () => {
+  const ladderOnly = parseYaml(SAMPLE.replace("completed_at: 2026-07-16", "completed_at: null"));
+  assert.strictEqual(ladderOnly.ladder["1-onboard"], "done");
+  assert.strictEqual(onboardingComplete(ladderOnly), true);
 });
 // all ladder done → ladderUnfinished false
 check("ladderUnfinished false when all done/skipped", () => {

@@ -717,7 +717,12 @@ async function handleLegacyActivate(id) {
 
 // How long we wait for the server's live catalog before falling back to the
 // local floor. Bounded so a slow/down server can never stall the MCP handshake.
-const TOOLS_LIST_TIMEOUT_MS = 2500;
+//
+// 2500 was too tight against a cold serverless start: the fallback floor is a
+// SMALLER tool list, so a buyer whose first call happened to hit a cold lambda
+// silently lost tools they had paid for until the next handshake. 5000 still
+// bounds the handshake to something nobody perceives as broken.
+const TOOLS_LIST_TIMEOUT_MS = 5000;
 
 function withTimeout(promise, ms) {
   return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);

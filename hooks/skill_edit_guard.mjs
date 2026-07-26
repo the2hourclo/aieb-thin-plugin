@@ -21,9 +21,13 @@ process.stdin.on("end", () => {
     const tool = payload.tool_name || "";
     if (tool === "Edit" || tool === "Write") {
       const p = String(payload.tool_input?.file_path || "").replace(/\\/g, "/");
-      const managed =
-        /\/\.claude\/skills\//i.test(p) ||
-        /\/\.claude\/plugins\/.*\/skills\//i.test(p);
+      // ONLY skills we ship. `.claude/skills/` in the buyer's OWN workspace is
+      // where their first skill gets written at checkpoint 3 — guarding it told
+      // a buyer that the skill they were building belongs to someone else and
+      // would be overwritten, at the exact moment the journey asks them to
+      // build it (2026-07-26 audit). Plugin-installed skills are the managed
+      // ones; a file the buyer authored is theirs.
+      const managed = /\/\.claude\/plugins\/.*\/skills\//i.test(p);
       if (managed) {
         decision = {
           hookSpecificOutput: {
