@@ -4,7 +4,7 @@ This plugin is intentionally thin: it contains no paid AIEB instruction bodies. 
 
 - MCP: `https://aieb-gated-mcp.vercel.app/mcp`
 - Secure activation API: `https://aieb-gated-mcp.vercel.app/device/*`
-- Customer activation page: `https://the2hourclo.github.io/clo-courses/clo-course/get-access-aieb.html`
+- Customer activation page: `https://course.chiefleverageofficers.com/clo-course/get-access-aieb.html` (the older `the2hourclo.github.io` copy redirects here)
 
 ## Secure connection model (v0.14.6)
 
@@ -12,7 +12,7 @@ The connector is defined at plugin level, so it exists in every folder the buyer
 
 1. `/setup-aieb` calls `connect_aieb` with no secrets.
 2. The connector creates a short-lived, one-time activation code and returns the course-page URL.
-3. The buyer enters the Lemon Squeezy key on that HTTPS page, never in Claude or chat history.
+3. The buyer signs in on that HTTPS page with the Google address they bought with, and the server matches it to their order. A Lemon Squeezy key is the fallback for an address with no purchase behind it — entered on the page, never in Claude or chat history.
 4. The connector polls the activation status in the background and completes the connection by itself the moment the page approves (`finish_aieb_connection` remains as the manual confirm/fallback).
 5. On approval the connector exchanges its private verifier for an opaque `aieb_v1_…` device token and stores that token in `~/.aieb-mcp/config.json` with user-only file permissions where supported.
 

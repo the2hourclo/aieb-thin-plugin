@@ -460,8 +460,9 @@ const CONNECT_TOOL = {
   name: "connect_aieb",
   description:
     "Start or repair the secure AI Employee Builder connection. Call this when setup is needed or a paid " +
-    "skill says the connection is missing. It returns one safe activation link. The user opens it and " +
-    "enters their Lemon Squeezy key on the AIEB page, never in chat. Pass reconnect: true only when the " +
+    "skill says the connection is missing. It returns one safe activation link. The user opens it and signs " +
+    "in with the Google address they bought with — nothing to type. A Lemon Squeezy key is the fallback, on " +
+    "that page only, never in chat. Pass reconnect: true only when the " +
     "user explicitly asks to connect again on a machine that already works — switching to a different " +
     "subscription or account, or re-doing setup deliberately.",
   inputSchema: {
@@ -572,11 +573,11 @@ function startActivationPoll() {
 
 const CONNECT_INSTRUCTIONS = (pending) =>
   `Open this secure activation page: ${pending.verification_url}\n\n` +
-  `The code is ${pending.user_code}. If that browser is the one the purchase was made in, the page connects ` +
-  `by itself — nothing to enter. Otherwise it asks for the Lemon Squeezy key from the receipt, entered on that ` +
-  `page only, never in chat. Either way the connection completes here within a few seconds of the page saying ` +
-  `connected — the user can simply continue. If a paid skill still reports no connection after a minute, call ` +
-  `finish_aieb_connection.`;
+  `The code is ${pending.user_code}. On that page they click "Continue with Google" and pick the address they ` +
+  `bought with — that finishes it with nothing typed. The Lemon Squeezy key is underneath as the fallback, for ` +
+  `an address Google finds no purchase on, and it goes on that page only, never in chat. Either way the ` +
+  `connection completes here within a few seconds of the page saying connected — the user can simply continue. ` +
+  `If a paid skill still reports no connection after a minute, call finish_aieb_connection.`;
 
 async function handleConnectAieb(id, args = {}) {
   try {
