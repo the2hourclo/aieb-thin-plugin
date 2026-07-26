@@ -24,6 +24,15 @@ Interpret these keys:
 
 **Onboarding not complete** (`onboarding.completed_at` absent, file present). Resume onboarding from its `current_step` — do not restart it from the top.
 
+**No `progress-state.yaml`, but `.claude-state/onboarding-progress.json` exists.** This is a workspace set up under an older release, before the journey state existed. Do NOT resume its `current_step`: that file predates the current path, so its saved step may name work the product no longer does — a real workspace on 2026-07-26 resumed "filling digital assets, starting with voice" weeks after that stopped being the flow, which reads as the update having changed nothing.
+
+Instead, work out where they actually are from what is on disk, and continue on the CURRENT journey:
+- `.claude/skills|agents|commands|hooks` present → the workspace scaffold is done.
+- A Business X-Ray output or `.claude-state/xray-pages/` → the map is done.
+- Neither → treat as the start of the journey.
+
+Say one line naming what is already finished so their earlier work still counts, then offer the first checkpoint they have not completed. Never re-run a step whose output is already sitting there.
+
 **Onboarding complete, work remaining** (a pending `roadmap` item or any ladder stage still pending). This is the main case:
 1. One line of orientation — what's already done (name the finished ladder stages / roadmap builds), so they feel the progress.
 2. The next move — read out `next.say` verbatim if present; otherwise name the pending `roadmap` item's `build` and offer to build it.
