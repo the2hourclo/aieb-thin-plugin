@@ -34,11 +34,13 @@ process.stdin.on("end", () => {
             hookEventName: "PreToolUse",
             permissionDecision: "ask",
             permissionDecisionReason:
-              "This file belongs to a managed AI Employee skill. Direct edits are overwritten by " +
-              "updates and skip the update discipline. The right door: say \"update the <skill> skill\" — " +
-              "the meta-create-skill employee applies changes properly (for served skills, via " +
-              "digital-assets/overrides/<skill>.md, which survives every update). Approve this only if " +
-              "you are deliberately hand-editing, e.g. while following meta-create-skill's own instructions."
+              "This file belongs to a managed plugin skill — plugin updates overwrite direct edits. " +
+              "For AI Employee Builder skills the durable door is a personal override: ask for a " +
+              "personal rule so the <skill> skill does it your way, and a short override gets drafted " +
+              "into digital-assets/overrides/<skill>.md (your rule wins over the default and survives " +
+              "every update; see this plugin's self-improve/write-override-procedure.md). If the skill " +
+              "MISFIRED, run the retrospective skill instead. Approve this edit only if you are " +
+              "deliberately hand-editing a managed copy and accept that the next update replaces it."
           }
         };
       }

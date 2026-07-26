@@ -11,7 +11,7 @@ Connect this machine with the shortest secure path. The paid instructions stay o
 
 ## Step 0 — Before the link: the plugin has to be current
 
-The secure setup tools (`connect_aieb`, `finish_aieb_connection`) landed in plugin **v0.17.0**. On anything older this command has nothing to call, and telling the user to "run connect_aieb" sends them looking for a tool that isn't there.
+The secure setup tools (`connect_aieb`, `finish_aieb_connection`) landed in plugin **v0.13.0**. On anything older this command has nothing to call, and telling the user to "run connect_aieb" sends them looking for a tool that isn't there.
 
 So if a `connect_aieb` tool cannot be found after a real tool search, do not improvise a workaround — the plugin is out of date. Give these three steps in order and stop:
 
