@@ -1,5 +1,5 @@
 ---
-description: Securely connect AI Employee Builder through one activation link. The Lemon Squeezy key is entered on the AIEB page, never in chat, and setup takes effect without a restart. Not to be confused with Anthropic's /setup-cowork, which configures the Cowork app itself — this command is the one that connects your AI Employee Builder purchase.
+description: Securely connect AI Employee Builder through one activation link — and on an already-connected machine, check for and hand out shell updates (setup and update are the same door; run it any time). The Lemon Squeezy key is entered on the AIEB page, never in chat, and setup takes effect without a restart. Not to be confused with Anthropic's /setup-cowork, which configures the Cowork app itself — this command is the one that connects your AI Employee Builder purchase.
 allowed-tools: [Read, Write, Edit, Bash]
 ---
 
@@ -16,12 +16,13 @@ The secure setup tools (`connect_aieb`, `finish_aieb_connection`) landed in plug
 So if a `connect_aieb` tool cannot be found after a real tool search, do not improvise a workaround — the plugin is out of date. Give these three steps in order and stop:
 
 ```
+/plugin marketplace update aieb-thin-plugin
 /plugin install ai-employee-builder@aieb-thin-plugin
 /reload-plugins
 /setup-aieb
 ```
 
-That sequence updates the shell and reopens this flow. Their paid skills are unaffected — skill content is served fresh from the server and never needed an update.
+That sequence refreshes the marketplace listing (without it the install can pull a stale version), updates the shell, and reopens this flow. Their paid skills are unaffected — skill content is served fresh from the server and never needed an update.
 
 ## Step 1 — Start the secure connection
 
@@ -76,6 +77,24 @@ Call `get_skill` with `skill_id: meta-create-skill`, `path: SKILL.md`. If it suc
 **If the user asks to reconnect** — "reconnect", "set it up again", "connect a different account", "use my other subscription", or they say the connection belongs to the wrong person — call `connect_aieb` with `reconnect: true` and run Step 1 normally. Without that argument the tool refuses on an already-connected machine, and the only alternative is hand-deleting a file in their home folder, which is never an instruction to give a business owner.
 
 Do NOT pass `reconnect: true` on your own initiative to "refresh" a connection that is working.
+
+## Step 3b — Already connected? This is also the update door
+
+Setup and update are the same door — running `/setup-aieb` on a working machine is how the shell gets updated, never a mistake. The Step 3 verification call already told you what you need: when this plugin is behind, the server attaches a shell-version notice to every tool response.
+
+- **Notice present (shell behind):** this is the moment — don't park it for "the next natural pause." Tell the user in one line that a shell update is available and that their skills, connection, and progress are untouched by it, then give exactly this block:
+
+  ```
+  /plugin marketplace update aieb-thin-plugin
+  /plugin install ai-employee-builder@aieb-thin-plugin
+  /reload-plugins
+  ```
+
+  In the same breath, offer the once-only fix so this never needs doing again: in `/plugin` → **Marketplaces** → `aieb-thin-plugin`, switch **auto-update on** — future shell updates then arrive on their own (auto-update ships OFF for non-Anthropic marketplaces, so it's one flip they only make once).
+
+- **No notice:** the shell is current — fold "and you're up to date" into the connection confirmation and move on. No commands, no ceremony.
+
+Either way, remind them of nothing else: paid skill bodies are served fresh from the server on every fetch, so content updates reach them with zero action regardless of shell version.
 
 ## Step 4 — Continue straight into onboarding (the connection is the doorway, not the destination)
 
