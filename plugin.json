@@ -1,20 +1,14 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ai-employee-builder",
   "version": "0.27.0",
-  "description": "Public AI Employee Builder shell: auto-routing skill stubs + proactive hooks that connect buyers to the gated AIEB MCP server.",
+  "description": "Connect AI Employee Builder to Codex, Claude Code, Cowork, and other Agent Plugins-compatible hosts.",
   "author": {
     "name": "Rashid Khamis",
-    "email": "rashid@thepeakperformer.io",
     "url": "https://chiefleverageofficer.substack.com/"
   },
   "homepage": "https://chiefleverageofficer.substack.com/",
   "repository": "https://github.com/the2hourclo/aieb-thin-plugin",
   "license": "UNLICENSED",
-  "keywords": [
-    "aieb",
-    "ai-employees",
-    "mcp",
-    "setup",
-    "claude-code"
-  ]
+  "keywords": ["aieb", "ai-employees", "mcp", "codex", "setup"]
 }

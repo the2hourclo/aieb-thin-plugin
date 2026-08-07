@@ -23,11 +23,14 @@ import path from "node:path";
 
 const PLUGIN_NAME = "ai-employee-builder";
 const MARKETPLACE = "aieb-thin-plugin";
+const IS_CODEX = Boolean(process.env.PLUGIN_ROOT);
+const WORKSPACE_MAP_FILE = IS_CODEX ? "AGENTS.md" : "CLAUDE.md";
 const THROTTLE_HOURS = 24;
 const VERSION_URL = process.env.AIEB_VERSION_URL || "https://aieb-gated-mcp.vercel.app/version";
 const TIMEOUT_MS = 3000; // short, so a slow network never stalls session start
 
 function claudeRoot() {
+  if (process.env.PLUGIN_DATA) return process.env.PLUGIN_DATA;
   const home = process.env.USERPROFILE || process.env.HOME || os.homedir();
   return path.join(home, ".claude");
 }
@@ -135,7 +138,7 @@ function recordCheck() {
 // block (not an AIEB-scaffolded workspace).
 function workspaceStampVersion(cwd) {
   try {
-    const text = fs.readFileSync(path.join(cwd, "CLAUDE.md"), "utf8");
+    const text = fs.readFileSync(path.join(cwd, WORKSPACE_MAP_FILE), "utf8");
     const m = text.match(/managed-by-ai-employee-builder:intro:start(?:[^\S\r\n]+v=(\d+))?/);
     if (!m) return null;
     return m[1] ? parseInt(m[1], 10) : 0;
@@ -153,7 +156,9 @@ function templateVersion(remote) {
   return Number.isFinite(n) ? Math.trunc(n) : null;
 }
 
-const UPDATE_CMDS = `/plugin install ${PLUGIN_NAME}@${MARKETPLACE}  →  /reload-plugins  →  /setup-aieb`;
+const UPDATE_CMDS = IS_CODEX
+  ? `codex plugin add ${PLUGIN_NAME}@${MARKETPLACE}  →  start a fresh Codex thread  →  say "set up AIEB"`
+  : `/plugin install ${PLUGIN_NAME}@${MARKETPLACE}  →  /reload-plugins  →  /setup-aieb`;
 
 const FIRM =
   `[${PLUGIN_NAME} hook] The AI Employee Builder plugin shell installed here is v{have}, ` +
@@ -171,7 +176,7 @@ const GENTLE =
 
 const WORKSPACE_BEHIND =
   `[${PLUGIN_NAME} hook] This folder's AI Employee workspace map (the managed block in ` +
-  `CLAUDE.md, v{ws}) is behind the current template (v{tpl}). At a natural opening, mention ` +
+  `${WORKSPACE_MAP_FILE}, v{ws}) is behind the current template (v{tpl}). At a natural opening, mention ` +
   `gently: "Your AI Employee workspace map is a version behind — say 'check my setup' to ` +
   `refresh it." Don't push or interrupt a task.`;
 

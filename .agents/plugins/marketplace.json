@@ -1,0 +1,16 @@
+{
+  "name": "aieb-thin-plugin",
+  "interface": { "displayName": "AI Employee Builder" },
+  "plugins": [
+    {
+      "name": "ai-employee-builder",
+      "source": "./",
+      "description": "Connect Codex to the licensed AI Employee Builder runtime.",
+      "category": "Productivity",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      }
+    }
+  ]
+}

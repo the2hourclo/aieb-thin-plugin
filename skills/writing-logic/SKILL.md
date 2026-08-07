@@ -1,7 +1,6 @@
 ---
 name: writing-logic
 description: Writing employee · Argument scaffolding system. Takes an idea (or a source) and sequences it into a Perspective-Shift scaffold — one protagonist's Old→New journey across labeled beats, one takeaway each, ordered to meet the reader where they are and break the idea down progressively. Build the scaffold, then QA it for logical integrity before any prose. USE WHEN user says 'plan argument', 'scaffold this', 'argument structure', 'plan the newsletter structure', 'sequence these ideas', 'logic check my writing', 'check my logic', 'expand this idea', 'map my ACTs', or when building the argument structure for any content piece before writing prose.
-user-invocable: false
 ---
 
 # writing-logic — MCP loader
@@ -19,13 +18,15 @@ Call the `aieb` MCP `get_skill` tool with:
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
 
-**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`) — match ANY tool ending in `get_skill`, never an exact name. On Cowork, MCP tools load lazily: they may not appear in the visible tool list until searched for — run a tool search for "get_skill" before deciding it's absent.
+**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`; Codex may expose another prefix) — match ANY tool ending in `get_skill`, never an exact name. On hosts with lazy MCP loading, run a tool search for "get_skill" before deciding it's absent.
 
 **If a `get_skill` tool truly does NOT exist on any server after searching**, the connector is missing on this machine. Stop and tell the user the fix for THEIR surface, then wait:
 
 > **Claude Code:** The AI Employee Builder connector isn't set up yet — run /setup-aieb, open the secure link it gives you, then /reload-plugins. Never paste a license key into chat.
 >
 > **Claude Desktop / Cowork:** Make sure the AI Employee Builder plugin is installed (Customize → Personal plugins — if it's missing, add the marketplace `the2hourclo/aieb-thin-plugin` and install it), then run /setup-aieb here in chat. It gives you a secure page where you enter the key; the plugin saves only an opaque device token. Never paste the key into chat. Still nothing after that? Say "check my setup" and I'll walk you through it.
+>
+> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin`, start a fresh Codex thread, then say "set up AIEB". The setup skill opens the same secure activation page and stores only an opaque device token. Never paste a license key into chat.
 
 Do not guess at or reconstruct the skill's content in the meantime.
 

@@ -1,6 +1,6 @@
 ---
 name: business-os
-description: Builder employee · Install and maintain the operating system your business runs on — the file structure AI agents navigate. Scaffolds department folders (marketing, sales, product, finance, operations, strategy) with per-department CLAUDE.md indexes, builds a BUSINESS-MAP.md world model that maps the money pipeline to folders/skills/metrics, installs a dated content-naming convention, migrates existing messy files in safely, runs recurring tidy-up passes, wires a Live Data section mapping where live business state lives in external systems (Notion, Google Drive, a CRM — asks what you use, then finds the actual databases through your connected tools), generates AGENTS.md mirrors so the same workspace works in ChatGPT/Codex or any AI, and verifies routing with a stress test. USE WHEN user says "set up my business OS", "scaffold my workspace", "organize my files for AI", "create departments", "clean up my workspace", "tidy my files", "refactor my folders", "my AI can't find anything", "make my business readable", "world model", "use my workspace with ChatGPT", "make this work in any AI", "AGENTS.md", "connect my Notion", "connect my email", "connect my Gmail", "hook up my Google Drive", "my AI can't see my emails/tasks/numbers", "where does my live data live", or when an AI repeatedly searches the whole workspace to answer basic business questions. Do NOT use to DIAGNOSE the business or draw process diagrams (bowtie funnels, swimlanes, opportunity maps) — that's the business-x-ray skill; business-os organizes the FILES the business runs on.
+description: Builder employee · Install and maintain the file system AI employees navigate. Builds a BUSINESS-MAP.md world model; department folders with neutral DEPARTMENT.md sources and generated CLAUDE.md plus AGENTS.md adapters; client records; shared system records for CRM, email, Drive, Notion, and other tools; a normalized client-system relationship ledger with backlinks instead of duplicated tool setup; live-data routing with verified IDs; safe migration, tidy, and routing verification. USE WHEN user says "set up my business OS", "organize my workspace", "map my clients", "connect my CRM", "connect my data sources", "make this work in Claude and Codex", "AGENTS.md", "CLAUDE.md", "my AI can't find anything", or "where does my live data live". Do NOT use to diagnose business processes or draw opportunity maps; use business-x-ray for that.
 user-invocable: false
 ---
 
@@ -19,13 +19,15 @@ Call the `aieb` MCP `get_skill` tool with:
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
 
-**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`) — match ANY tool ending in `get_skill`, never an exact name. On Cowork, MCP tools load lazily: they may not appear in the visible tool list until searched for — run a tool search for "get_skill" before deciding it's absent.
+**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`; Codex may expose another prefix) — match ANY tool ending in `get_skill`, never an exact name. On hosts with lazy MCP loading, run a tool search for "get_skill" before deciding it's absent.
 
 **If a `get_skill` tool truly does NOT exist on any server after searching**, the connector is missing on this machine. Stop and tell the user the fix for THEIR surface, then wait:
 
 > **Claude Code:** The AI Employee Builder connector isn't set up yet — run /setup-aieb, open the secure link it gives you, then /reload-plugins. Never paste a license key into chat.
 >
 > **Claude Desktop / Cowork:** Make sure the AI Employee Builder plugin is installed (Customize → Personal plugins — if it's missing, add the marketplace `the2hourclo/aieb-thin-plugin` and install it), then run /setup-aieb here in chat. It gives you a secure page where you enter the key; the plugin saves only an opaque device token. Never paste the key into chat. Still nothing after that? Say "check my setup" and I'll walk you through it.
+>
+> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin`, start a fresh Codex thread, then say "set up AIEB". The setup skill opens the same secure activation page and stores only an opaque device token. Never paste a license key into chat.
 
 Do not guess at or reconstruct the skill's content in the meantime.
 

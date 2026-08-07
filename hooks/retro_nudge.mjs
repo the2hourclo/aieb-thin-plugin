@@ -36,8 +36,12 @@ import os from "node:os";
 import path from "node:path";
 
 const PLUGIN_NAME = "ai-employee-builder";
+const IS_CODEX = Boolean(process.env.PLUGIN_ROOT);
+const OWN_SKILLS_PATH = IS_CODEX ? ".agents/skills/" : ".claude/skills/";
+const RETRO_ACTION = IS_CODEX ? "the retrospective skill" : `/${PLUGIN_NAME}:retrospective`;
 
 function claudeRoot() {
+  if (process.env.PLUGIN_DATA) return process.env.PLUGIN_DATA;
   const home = process.env.USERPROFILE || process.env.HOME || os.homedir();
   return path.join(home, ".claude");
 }
@@ -80,9 +84,9 @@ const NUDGE =
   "missed. When there's a natural opening (NOT before answering their " +
   "current question), mention it casually ONCE. First check WHERE the " +
   "skill lives. If it is the user's OWN skill (it lives in this project's " +
-  ".claude/skills/), LEAD with the fix they control: \"By the way, a skill " +
+  `${OWN_SKILLS_PATH}), LEAD with the fix they control: \"By the way, a skill ` +
   "seemed to miss last session. That one is yours — want me to run " +
-  `/${PLUGIN_NAME}:retrospective and patch its SKILL.md so it doesn't happen ` +
+  `${RETRO_ACTION} and patch its SKILL.md so it doesn't happen ` +
   "again?\" (the plugin's author can't fix a skill that exists only on " +
   "this machine). If it is one of the plugin's built-in skills (fetched " +
   "through get_skill, so read-only — you can't edit its SKILL.md), LEAD " +

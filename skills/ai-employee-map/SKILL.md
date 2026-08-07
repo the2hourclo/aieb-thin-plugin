@@ -1,6 +1,6 @@
 ---
 name: ai-employee-map
-description: Builder employee · The AI Employee Map — help business owners find opportunities to implement AI Employees in their operations. Map the business across the 4 levels (Manual → Documented → AI as a Tool → AI Employees), find the bottleneck, and show exactly what to build first. A consultative, adaptive interview that ends with a personalized draw.io map the user keeps. USE WHEN user says "ai employee map", "map my business", "find AI opportunities", "where can I use AI in my business", "ai readiness", "audit my business", "what level is my business", "am I ready for AI", "where do I start with AI", "diagnose my business", or wants a diagnosis of how AI-ready their operations are.
+description: Builder employee · The free introductory AI Employee Map helps owners assess AI readiness across four levels (Manual → Documented → AI as a Tool → AI Employees) and identify a first AI opportunity. USE WHEN user explicitly says "ai employee map", "find AI opportunities", "where can I use AI", "ai readiness", "what level is my business", "am I ready for AI", or asks for the free intro map. Operational business diagnosis routes to business-x-ray; post-map build guidance routes to roadmap.
 ---
 
 # ai-employee-map — MCP loader
@@ -18,13 +18,15 @@ Call the `aieb` MCP `get_skill` tool with:
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
 
-**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`) — match ANY tool ending in `get_skill`, never an exact name. On Cowork, MCP tools load lazily: they may not appear in the visible tool list until searched for — run a tool search for "get_skill" before deciding it's absent.
+**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`; Codex may expose another prefix) — match ANY tool ending in `get_skill`, never an exact name. On hosts with lazy MCP loading, run a tool search for "get_skill" before deciding it's absent.
 
 **If a `get_skill` tool truly does NOT exist on any server after searching**, the connector is missing on this machine. Stop and tell the user the fix for THEIR surface, then wait:
 
 > **Claude Code:** The AI Employee Builder connector isn't set up yet — run /setup-aieb, open the secure link it gives you, then /reload-plugins. Never paste a license key into chat.
 >
 > **Claude Desktop / Cowork:** Make sure the AI Employee Builder plugin is installed (Customize → Personal plugins — if it's missing, add the marketplace `the2hourclo/aieb-thin-plugin` and install it), then run /setup-aieb here in chat. It gives you a secure page where you enter the key; the plugin saves only an opaque device token. Never paste the key into chat. Still nothing after that? Say "check my setup" and I'll walk you through it.
+>
+> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin`, start a fresh Codex thread, then say "set up AIEB". The setup skill opens the same secure activation page and stores only an opaque device token. Never paste a license key into chat.
 
 Do not guess at or reconstruct the skill's content in the meantime.
 

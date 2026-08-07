@@ -1,6 +1,6 @@
 ---
 name: decision-tree
-description: "Builder employee · Map any taste/judgment decision as a navigable decision tree and walk it to the best answer instead of averaging or guessing — which avatar, which angle, how to position this email, which hook, which offer frame, which thumbnail concept. Claude proposes the tree (MECE, 2–3 cuts tried), the human decides at the forks, every pick is recorded WITH its reason, and only the chosen branch's context feeds the downstream work. Trees can be ad-hoc (one session, then discarded) or persistent (saved with per-branch 'save game' docs that accumulate decisions so Claude gradually pre-makes the user's calls). USE WHEN user says 'build a decision tree', 'map the options', 'map the decision', 'which option is best', 'how should we position this', 'position this email', 'which angle/avatar/hook should we use', 'help me decide' (for creative/taste choices), 'it blends the options instead of picking', when ANY skill needs to choose among branching creative options before rendering, when a chain reaches a DECISION GATE (a fork seam, not a yes/no approval), or when meta-create-skill is planning a new skill/system and the design has open forks to navigate with the user. Do NOT use for: strategic A-vs-B resource decisions judged on ROI/reversibility/leverage ('should I hire', 'should I build X') — that's analysis, not taste; building a permanent judgment harness INTO a skill → meta-create-skill (build-judgment-harness workflow); a decision with no real options (one audience, one voice) → just do the work."
+description: "Builder employee · Navigate a real branching taste or judgment decision instead of averaging options: which avatar, angle, positioning, hook, offer frame, or thumbnail concept. USE WHEN user says 'build a decision tree', 'map the options', 'map the decision', 'which option is best', 'help me decide' for a creative choice, or when a chain reaches a fork with two or more legitimate branches. Record each human pick and reason, then pass only the chosen branch downstream. Do NOT use when there is no genuine fork among alternatives."
 ---
 
 # decision-tree — MCP loader
@@ -18,13 +18,15 @@ Call the `aieb` MCP `get_skill` tool with:
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
 
-**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`) — match ANY tool ending in `get_skill`, never an exact name. On Cowork, MCP tools load lazily: they may not appear in the visible tool list until searched for — run a tool search for "get_skill" before deciding it's absent.
+**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`; Codex may expose another prefix) — match ANY tool ending in `get_skill`, never an exact name. On hosts with lazy MCP loading, run a tool search for "get_skill" before deciding it's absent.
 
 **If a `get_skill` tool truly does NOT exist on any server after searching**, the connector is missing on this machine. Stop and tell the user the fix for THEIR surface, then wait:
 
 > **Claude Code:** The AI Employee Builder connector isn't set up yet — run /setup-aieb, open the secure link it gives you, then /reload-plugins. Never paste a license key into chat.
 >
 > **Claude Desktop / Cowork:** Make sure the AI Employee Builder plugin is installed (Customize → Personal plugins — if it's missing, add the marketplace `the2hourclo/aieb-thin-plugin` and install it), then run /setup-aieb here in chat. It gives you a secure page where you enter the key; the plugin saves only an opaque device token. Never paste the key into chat. Still nothing after that? Say "check my setup" and I'll walk you through it.
+>
+> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin`, start a fresh Codex thread, then say "set up AIEB". The setup skill opens the same secure activation page and stores only an opaque device token. Never paste a license key into chat.
 
 Do not guess at or reconstruct the skill's content in the meantime.
 

@@ -1,6 +1,6 @@
 ---
 name: business-x-ray
-description: "Builder employee · Map, diagnose, and optimize business operations through progressive visual analysis. Creates Business Maps, Bow-Tie Funnels, Process Swimlanes with 3-level drill-down, a System Connection Map, and a future-state Operating System Map that redraws the business as connected AI Employees (with MCP-availability mapping for every tool). USE WHEN user says 'business x-ray', 'x-ray my business', 'map my business', 'diagnose my business', 'where am I the bottleneck', 'map my operations', 'audit my business', 'score my business assets', 'what is my leverage score', 'assess my digital assets', 'continue my business map', 'read my business diagram', or wants a visual diagnosis of how their business runs. Do NOT use to scaffold folders/file structure (business-os), to build the skills the map surfaces (meta-create-skill), or for the free intro-level 4-level map (ai-employee-map)."
+description: "Builder employee · Operational Business X-Ray: map, diagnose, and optimize how the business runs through progressive visual analysis. Creates Business Maps, Bow-Tie Funnels, Process Swimlanes, a System Connection Map, and a future-state Operating System Map of connected AI Employees and tools. ALWAYS USE for 'business x-ray', 'x-ray my business', 'map my business', 'diagnose my business', 'audit my business', 'find the bottlenecks', 'where am I the bottleneck', 'map my operations', 'where does my business break without me', 'score my business assets', 'leverage score', or a visual operational diagnosis. Folder/file scaffolding routes to business-os; an explicitly requested free intro AI-readiness map routes to ai-employee-map; post-diagnosis build guidance routes to roadmap."
 ---
 
 # business-x-ray — MCP loader
@@ -18,13 +18,15 @@ Call the `aieb` MCP `get_skill` tool with:
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
 
-**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`) — match ANY tool ending in `get_skill`, never an exact name. On Cowork, MCP tools load lazily: they may not appear in the visible tool list until searched for — run a tool search for "get_skill" before deciding it's absent.
+**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`; Codex may expose another prefix) — match ANY tool ending in `get_skill`, never an exact name. On hosts with lazy MCP loading, run a tool search for "get_skill" before deciding it's absent.
 
 **If a `get_skill` tool truly does NOT exist on any server after searching**, the connector is missing on this machine. Stop and tell the user the fix for THEIR surface, then wait:
 
 > **Claude Code:** The AI Employee Builder connector isn't set up yet — run /setup-aieb, open the secure link it gives you, then /reload-plugins. Never paste a license key into chat.
 >
 > **Claude Desktop / Cowork:** Make sure the AI Employee Builder plugin is installed (Customize → Personal plugins — if it's missing, add the marketplace `the2hourclo/aieb-thin-plugin` and install it), then run /setup-aieb here in chat. It gives you a secure page where you enter the key; the plugin saves only an opaque device token. Never paste the key into chat. Still nothing after that? Say "check my setup" and I'll walk you through it.
+>
+> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin`, start a fresh Codex thread, then say "set up AIEB". The setup skill opens the same secure activation page and stores only an opaque device token. Never paste a license key into chat.
 
 Do not guess at or reconstruct the skill's content in the meantime.
 

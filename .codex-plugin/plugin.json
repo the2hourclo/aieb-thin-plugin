@@ -1,7 +1,7 @@
 {
   "name": "ai-employee-builder",
-  "version": "0.26.0",
-  "description": "Public AI Employee Builder shell: auto-routing skill stubs + proactive hooks that connect buyers to the gated AIEB MCP server.",
+  "version": "0.27.0",
+  "description": "Public AI Employee Builder shell: auto-routing skills and a local connector for the gated AIEB MCP server across Codex, Claude Code, and Cowork.",
   "author": {
     "name": "Rashid Khamis",
     "email": "rashid@thepeakperformer.io",
@@ -16,10 +16,12 @@
     "mcp",
     "setup"
   ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "AI Employee Builder",
-    "shortDescription": "Connects Claude Code to the hosted AIEB MCP runtime.",
-    "longDescription": "A public shell for AI Employee Builder. It contains setup guidance and a local MCP proxy while paid skill instructions are fetched from the licensed AIEB MCP server at runtime.",
+    "shortDescription": "Connects Codex to the hosted AIEB MCP runtime.",
+    "longDescription": "A public shell for AI Employee Builder on Codex. It contains portable setup guidance and a local MCP proxy while paid skill instructions are fetched from the licensed AIEB MCP server at runtime.",
     "developerName": "The 2 Hour CLO",
     "category": "Productivity",
     "capabilities": [

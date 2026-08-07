@@ -28,6 +28,7 @@ const MAX_NUDGES = 3;
 const ROADMAP_STAGES = ["3-first-skill", "4-system", "5-autonomy"];
 
 function claudeRoot() {
+  if (process.env.PLUGIN_DATA) return process.env.PLUGIN_DATA;
   const home = process.env.USERPROFILE || process.env.HOME || os.homedir();
   return path.join(home, ".claude");
 }

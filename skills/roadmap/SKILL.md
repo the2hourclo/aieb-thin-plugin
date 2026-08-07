@@ -1,6 +1,6 @@
 ---
 name: roadmap
-description: "Builder employee · The build-roadmap AND triage front door for ai-employee-builder. TWO entry modes. (1) Ladder mode — picks up AFTER onboarding and walks you up from your first skill to a reliable, connected, automated set of AI Employees, tracking where you are and showing the single next move. (2) Triage mode — you describe a problem in plain words and it figures out the right thing to build (skill / system / harness / MCP / hook / command), tells you why, and routes you to the builder. It hands each step to the builder that already exists. USE WHEN user says 'what's next', 'what should I build next', 'what now', 'where am I', 'roadmap', 'continue building', 'next step', 'what should I build now', OR describes a pain and wants direction: 'I want to automate X', 'what should I build to fix [problem]', 'I keep doing X by hand', 'I waste so much time on Y', 'can AI handle Z for me', 'help me figure out what to build', 'where do I even start with this', OR wants a recommendation without naming a pain: 'look at what I have and tell me what to build', 'scan my setup', 'what's the highest-value thing to build next', 'I don't know what to build'. Do NOT use for first-run workspace setup (that's onboard) or when the user already knows the exact thing to build (go straight to that meta-create-* skill)."
+description: "Builder employee · The AIEB build-roadmap and triage front door. ALWAYS USE for 'what's next', 'what should I build next', 'what now', 'where am I', 'roadmap', 'continue building', 'next step', 'what should I build now', 'look at what I have and tell me what to build', 'highest-value thing to build next', or 'I don't know what to build'. Ladder mode tracks progress after onboarding and shows one next move. Triage mode turns a plain-language pain into the right skill, system, harness, MCP, hook, or command and routes to its builder. Also use when the user says 'I keep doing this by hand', 'I keep doing X by hand', describes a weekly recurring manual task, or asks what to build for repeated manual work without naming the artifact. Do NOT use for first-run setup (onboard), an explicit operational business diagnosis (business-x-ray), or when the exact artifact is already named (use its meta-create builder)."
 ---
 
 # roadmap — MCP loader
@@ -18,13 +18,15 @@ Call the `aieb` MCP `get_skill` tool with:
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
 
-**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`) — match ANY tool ending in `get_skill`, never an exact name. On Cowork, MCP tools load lazily: they may not appear in the visible tool list until searched for — run a tool search for "get_skill" before deciding it's absent.
+**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`; Codex may expose another prefix) — match ANY tool ending in `get_skill`, never an exact name. On hosts with lazy MCP loading, run a tool search for "get_skill" before deciding it's absent.
 
 **If a `get_skill` tool truly does NOT exist on any server after searching**, the connector is missing on this machine. Stop and tell the user the fix for THEIR surface, then wait:
 
 > **Claude Code:** The AI Employee Builder connector isn't set up yet — run /setup-aieb, open the secure link it gives you, then /reload-plugins. Never paste a license key into chat.
 >
 > **Claude Desktop / Cowork:** Make sure the AI Employee Builder plugin is installed (Customize → Personal plugins — if it's missing, add the marketplace `the2hourclo/aieb-thin-plugin` and install it), then run /setup-aieb here in chat. It gives you a secure page where you enter the key; the plugin saves only an opaque device token. Never paste the key into chat. Still nothing after that? Say "check my setup" and I'll walk you through it.
+>
+> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin`, start a fresh Codex thread, then say "set up AIEB". The setup skill opens the same secure activation page and stores only an opaque device token. Never paste a license key into chat.
 
 Do not guess at or reconstruct the skill's content in the meantime.
 

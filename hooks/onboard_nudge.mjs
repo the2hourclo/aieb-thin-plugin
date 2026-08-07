@@ -39,8 +39,11 @@ import { stateFilePath, readState, onboardingComplete } from "./lib/state.mjs";
 
 const PLUGIN_NAME = "ai-employee-builder";
 const MAX_NUDGES = 3;
+const IS_CODEX = Boolean(process.env.PLUGIN_ROOT);
+const AUTHORING_SKILLS = IS_CODEX ? path.join(".agents", "skills") : path.join(".claude", "skills");
 
 function claudeRoot() {
+  if (process.env.PLUGIN_DATA) return process.env.PLUGIN_DATA;
   const home = process.env.USERPROFILE || process.env.HOME || os.homedir();
   return path.join(home, ".claude");
 }
@@ -67,7 +70,7 @@ function isFreshWorkspace(cwd) {
     // Unified state file (progress-state.yaml) present → onboarding at least started.
     if (fs.existsSync(stateFilePath(cwd))) return false;
     if (fs.existsSync(path.join(cwd, ".claude-state", "onboarding-progress.json"))) return false;
-    const skillsPath = path.join(cwd, ".claude", "skills");
+    const skillsPath = path.join(cwd, AUTHORING_SKILLS);
     if (fs.existsSync(skillsPath) && fs.statSync(skillsPath).isDirectory()) return false;
   } catch {
     return false;
@@ -190,12 +193,14 @@ function buildResumeNudge(detail) {
   );
 }
 
+const SETUP_ACTION = IS_CODEX ? 'say "set up AIEB" in this Codex thread' : "run /setup-aieb";
+
 const NUDGE_NOT_ACTIVATED =
   `[${PLUGIN_NAME} hook] The ai-employee-builder plugin is installed but no license is ` +
   "connected on this machine yet, so paid skills (including onboarding) would hit the " +
   "license wall. When there's a natural opening (after acknowledging the user's actual " +
   'first request, not instead of it), offer ONCE, casually: "I see AI Employee Builder ' +
-  "is installed but not connected yet — run /setup-aieb. It gives you one secure link; " +
+  `is installed but not connected yet — ${SETUP_ACTION}. It gives you one secure link; ` +
   "on that page you click Continue with Google with the address you bought with, and " +
   "that's it, nothing to type. Takes about a minute. After that, say 'onboard me' and " +
   "I'll set up your workspace and first skill. And if you came for the free AI Employee " +

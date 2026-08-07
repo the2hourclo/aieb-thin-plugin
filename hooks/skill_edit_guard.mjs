@@ -27,7 +27,7 @@ process.stdin.on("end", () => {
       // would be overwritten, at the exact moment the journey asks them to
       // build it (2026-07-26 audit). Plugin-installed skills are the managed
       // ones; a file the buyer authored is theirs.
-      const managed = /\/\.claude\/plugins\/.*\/skills\//i.test(p);
+      const managed = /\/(?:\.claude|\.codex)\/plugins\/.*\/skills\//i.test(p);
       if (managed) {
         decision = {
           hookSpecificOutput: {

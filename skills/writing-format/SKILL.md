@@ -1,9 +1,8 @@
 ---
 name: writing-format
-description: Writing employee · Platform-specific formatting for publishable content. Apply Substack formatting (headers, bold, italic, blockquotes, spacing, visual rhythm) or carousel formatting. USE WHEN user says 'format for Substack', 'format this newsletter', 'apply formatting', 'make this publishable', 'format carousel', 'carousel formatting', 'Substack formatting', or when content needs platform-specific visual treatment.
+description: "Writing employee · Format an already-written draft for a publishing platform. ALWAYS USE when the user says 'format this for Substack', 'format for Substack', 'format this newsletter', 'apply formatting', 'make this publishable', 'format carousel', 'carousel formatting', 'Substack formatting', or asks only for platform-specific headers, bold, italics, blockquotes, spacing, or visual rhythm. This skill formats existing prose; it does not create the draft."
 context: fork
 agent: general-purpose
-user-invocable: false
 ---
 
 # writing-format — MCP loader
@@ -21,13 +20,15 @@ Call the `aieb` MCP `get_skill` tool with:
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
 
-**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`) — match ANY tool ending in `get_skill`, never an exact name. On Cowork, MCP tools load lazily: they may not appear in the visible tool list until searched for — run a tool search for "get_skill" before deciding it's absent.
+**Before concluding the connector is missing, search properly.** The tool's full name varies by surface (Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`; Codex may expose another prefix) — match ANY tool ending in `get_skill`, never an exact name. On hosts with lazy MCP loading, run a tool search for "get_skill" before deciding it's absent.
 
 **If a `get_skill` tool truly does NOT exist on any server after searching**, the connector is missing on this machine. Stop and tell the user the fix for THEIR surface, then wait:
 
 > **Claude Code:** The AI Employee Builder connector isn't set up yet — run /setup-aieb, open the secure link it gives you, then /reload-plugins. Never paste a license key into chat.
 >
 > **Claude Desktop / Cowork:** Make sure the AI Employee Builder plugin is installed (Customize → Personal plugins — if it's missing, add the marketplace `the2hourclo/aieb-thin-plugin` and install it), then run /setup-aieb here in chat. It gives you a secure page where you enter the key; the plugin saves only an opaque device token. Never paste the key into chat. Still nothing after that? Say "check my setup" and I'll walk you through it.
+>
+> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin`, start a fresh Codex thread, then say "set up AIEB". The setup skill opens the same secure activation page and stores only an opaque device token. Never paste a license key into chat.
 
 Do not guess at or reconstruct the skill's content in the meantime.
 
