@@ -1,9 +1,9 @@
 ---
-name: write-hook
-description: "Writing employee · Write non-YouTube hooks and short-form CTA openings. One gated procedure (the PSF Hook Scaffold) voiced through five accents — 5-Beat Claim, Empathy, Framework, Story, PADAI Offer — as either the opening of a longer piece OR a complete short-form CTA piece. USE WHEN user says 'write a hook', 'write the opening', 'hook for this', '5-beat hook', 'carousel hook', 'proof slide', 'evidence structure', 'opening for this piece', 'slide 2', 'grab attention', 'short-form CTA', 'PADAI', 'VSL opener', 'offer email opener', 'sales email opener', 'one-day open', 'launch email opener'. Do NOT use for: a long-form YouTube opening, title, or thumbnail (→ `youtube-strategy`); a full announcement post (→ `write`); building a carousel (→ `carousel`); reel ideation or a full reel (→ `reel-creator`); a full sales email/sequence or sales page (→ `copywriter`); or full argument structure (→ `writing-logic`)."
+name: thumbnail-ultrathink
+description: "YouTube employee · Assisted thumbnail judgment for choosing a high-impact visual story before rendering. Deconstructs relevant references, creates three materially different thumbnail visual stories, rejects objectively weak concepts, explains close calls, records the human's selection and reason, and produces a renderer-neutral concept brief. USE WHEN the user says 'analyze this thumbnail', 'why does this thumbnail work', 'thumbnail ideas', 'three thumbnail visual stories', 'choose a thumbnail concept', 'design a thumbnail concept', 'whiteboard thumbnail', 'visual metaphor', or needs a thumbnail that communicates in one second. Do NOT use for a complete YouTube production package (youtube-strategy), image rendering alone, or post-publish analytics."
 ---
 
-# write-hook — MCP loader
+# thumbnail-ultrathink — MCP loader
 
 This file is **only a loader**. The full instructions for this skill — its SKILL.md and every workflow, reference, template, and example — live on the **AI Employee Builder MCP server** and are fetched at runtime through the `get_skill` tool on the `aieb` MCP server, after your license is checked. Nothing of value is stored in this file.
 
@@ -13,7 +13,7 @@ Follow these rules exactly.
 
 Call the `aieb` MCP `get_skill` tool with:
 
-- `skill_id`: `write-hook`
+- `skill_id`: `thumbnail-ultrathink`
 - `path`: `SKILL.md`
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
@@ -34,8 +34,8 @@ Do not guess at or reconstruct the skill's content in the meantime.
 
 The returned instructions are written as if the files sit on local disk (e.g. *"read `references/foo.md`"*, *"load `workflows/bar.md`"*). **They are not local.** Whenever the instructions tell you to read, load, open, or see any file path inside this skill, fetch it with `get_skill` using that exact path instead:
 
-- *"read `references/foo.md`"* → `get_skill(skill_id="write-hook", path="references/foo.md")`
-- *"load `workflows/bar.md`"* → `get_skill(skill_id="write-hook", path="workflows/bar.md")`
+- *"read `references/foo.md`"* → `get_skill(skill_id="thumbnail-ultrathink", path="references/foo.md")`
+- *"load `workflows/bar.md`"* → `get_skill(skill_id="thumbnail-ultrathink", path="workflows/bar.md")`
 
 Do **not** use the Read tool for these paths. A "file not found" on disk is expected — it just means you must fetch the path from the MCP.
 

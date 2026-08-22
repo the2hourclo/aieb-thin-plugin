@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Writing employee · Write newsletters, long-form articles, daily emails, broadcast emails, and general one-off emails. USE when the requested deliverable is a newsletter, article, long-form post, daily email, broadcast email, or general email draft. Scope is editorial prose from idea to finished draft. Commercial product and offer copy is outside scope. Formatting-only work on an existing draft is outside scope. Planning-only and voice-setup jobs are outside scope."
+description: "Writing employee · Write newsletters, long-form articles, daily emails, broadcast emails, and general one-off emails. USE when the requested deliverable is a newsletter, article, long-form post, daily email, broadcast email, or general email draft. Scope is editorial prose from idea to finished draft. Any long-form YouTube asset, including a YouTube opening or hook, belongs to youtube-strategy. Commercial product and offer copy is outside scope. Formatting-only work on an existing draft is outside scope. Planning-only and voice-setup jobs are outside scope."
 hooks:
   PostToolUse:
     - matcher: "Write"
