@@ -1,9 +1,13 @@
 ---
-name: copywriter
-description: "Writing employee · Campaign and offer copywriting orchestrator. Builds campaign strategy, message foundations, offer documents, campaign email sequences, welcome emails, VSLs, paid live webinar/workshop pages, and Game Worth Playing documents. USE WHEN the user says 'sales campaign', 'offer document', 'promotion package', 'campaign email sequence', 'welcome email', 'write a welcome email', 'video sales letter', 'turn my offer into a video sales letter', 'webinar sales page', 'workshop page', or 'Game Worth Playing'. Routes offer diagnosis to offer-clarity, sales bullets to product-bullet-points, objection analogies to agreement-analogy, daily/editorial email to write, lifecycle sequences to email-os, generic website copy to copywriting, page diagnosis to cro, and headline-only work to headline. External deployment is a separate approval-gated handoff."
+name: agreement-analogy
+description: "Writing employee · Explain an objection, belief, or unfamiliar idea through a fair parallel that helps the reader reach their own conclusion without trapping them. USE WHEN user says 'write an agreement analogy', 'write one fair analogy', 'fair analogy', 'price objection', 'find an analogy for this objection', 'explain this belief with an analogy', 'analogy for my FAQ', 'bridge this objection', or 'use a parallel example'. Runs in fresh context to test fairness. Do NOT use for full campaign or offer copy -> copywriter; offer diagnosis -> offer-clarity; general teaching metaphors unrelated to selling -> the relevant writing skill."
+context: fork
+agent: general-purpose
+effort: high
+user-invocable: false
 ---
 
-# copywriter — MCP loader
+# agreement-analogy — MCP loader
 
 This file is **only a loader**. The full instructions for this skill — its SKILL.md and every workflow, reference, template, and example — live on the **AI Employee Builder MCP server** and are fetched at runtime through the `get_skill` tool on the `aieb` MCP server, after your license is checked. Nothing of value is stored in this file.
 
@@ -13,7 +17,7 @@ Follow these rules exactly.
 
 Call the `aieb` MCP `get_skill` tool with:
 
-- `skill_id`: `copywriter`
+- `skill_id`: `agreement-analogy`
 - `path`: `SKILL.md`
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
@@ -34,8 +38,8 @@ Do not guess at or reconstruct the skill's content in the meantime.
 
 The returned instructions are written as if the files sit on local disk (e.g. *"read `references/foo.md`"*, *"load `workflows/bar.md`"*). **They are not local.** Whenever the instructions tell you to read, load, open, or see any file path inside this skill, fetch it with `get_skill` using that exact path instead:
 
-- *"read `references/foo.md`"* → `get_skill(skill_id="copywriter", path="references/foo.md")`
-- *"load `workflows/bar.md`"* → `get_skill(skill_id="copywriter", path="workflows/bar.md")`
+- *"read `references/foo.md`"* → `get_skill(skill_id="agreement-analogy", path="references/foo.md")`
+- *"load `workflows/bar.md`"* → `get_skill(skill_id="agreement-analogy", path="workflows/bar.md")`
 
 Do **not** use the Read tool for these paths. A "file not found" on disk is expected — it just means you must fetch the path from the MCP.
 
