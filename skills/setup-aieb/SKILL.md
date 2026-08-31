@@ -1,79 +1,64 @@
 ---
 name: setup-aieb
-description: Securely connect, reconnect, update, or resume AI Employee Builder on this device. USE WHEN the user says "set up AIEB", "connect AIEB", "reconnect AIEB", "activate AI Employee Builder", "finish AIEB setup", "update AIEB", or has just installed the plugin.
+description: Securely connect, reconnect, update, or resume AI Employee Builder through its remote connector. USE WHEN the user says "set up AIEB", "connect AIEB", "reconnect AIEB", "activate AI Employee Builder", "finish AIEB setup", "update AIEB", or has just installed the plugin.
 ---
 
 # Set up AI Employee Builder
 
-Use the AIEB MCP tools in this session. Tool prefixes vary by host, so match tools by their final name rather than requiring an exact prefix.
+Use the AIEB MCP tools available in this session. Tool prefixes vary by host, so match tools by final name instead of assuming one exact prefix.
 
 ## Non-negotiable setup contract
 
-- Never request or accept a Lemon Squeezy key in chat. Never place one in a command, environment variable, URL, workspace file, config file, or model-visible tool argument.
-- Use only the secure browser activation returned by `connect_aieb`. The browser may recognise the purchase automatically; the key is a fallback entered on that page, never the default instruction.
-- Never claim paid access works because the free `ai-employee-map` loads. Verify a paid entitlement as described below.
-- Never bypass cancellation, expiration, product, store, tier, device, or rate-limit checks.
-- Setup must preserve the user's workspace, progress, and active task.
+- Never request or accept a Lemon Squeezy key in chat. The secure browser page is the only place a fallback key may be entered.
+- The remote connector owns authentication. Do not recreate the retired local `connect_aieb` / `finish_aieb_connection` device flow or ask the user to edit `~/.aieb-mcp/config.json`.
+- Never claim paid access works because the free `ai-employee-map` loads. Verify one paid skill.
+- Never bypass cancellation, expiration, product, store, tier, connector-grant, or rate-limit checks.
+- Preserve the user's workspace, progress, and active task.
 
-## 0. Confirm the shell is loaded
+> **Migration rule — origin 2026-08-31:** Cowork failed to launch the old local Node proxy on a customer Mac. Plugin v0.30.0 moved AIEB to remote HTTP OAuth. Existing device tokens remain valid only for older plugin versions during migration; do not tell a working legacy user to delete them manually.
 
-Find the tools ending in `connect_aieb`, `finish_aieb_connection`, and `get_skill`. Search for lazy-loaded tools before declaring them missing.
+## 0. Confirm the current shell is loaded
 
-If they are missing on Codex, give these steps and stop; a fresh thread is required for the refreshed plugin to initialise. Run the first line only when the marketplace is not already registered:
+Search lazy-loaded tools for one ending in `get_skill`. If it does not exist after a real tool search, the connector did not load.
 
-```text
-codex plugin marketplace add the2hourclo/aieb-thin-plugin
-codex plugin marketplace upgrade aieb-thin-plugin
-codex plugin add ai-employee-builder@aieb-thin-plugin
-Start a fresh Codex thread and say: set up AIEB
-```
-
-If Codex presents a hook review for this non-managed plugin, the user must review and trust the current hook definition before hook-based guards or nudges can run. On Claude Code or Cowork, use that host's native marketplace refresh, plugin install, and session reload flow. Do not improvise a key-based connector.
-
-## 1. Connect or reconnect
-
-First call `get_skill` with `skill_id: meta-create-skill` and `path: SKILL.md`.
-
-- **Paid skill loads:** the device is already connected. Say so in one line and continue to the update and workspace checks. Mention the escape hatch once: the user can say **reconnect** to use a different account or subscription.
-- **Authentication is missing or revoked:** call `connect_aieb` with no arguments.
-- **The user explicitly asks to reconnect, use another account, or says the connection belongs to someone else:** call `connect_aieb` with `reconnect: true`. Never set `reconnect: true` merely to refresh a working connection.
-- **Entitlement is cancelled, expired, wrong-product, or wrong-tier:** stop and relay the server's renewal or plan guidance. Do not reconnect to evade an entitlement result.
-
-Give the user the single activation URL returned by `connect_aieb`, then wait. Explain that the page may recognise the purchase automatically; otherwise they enter the key on that page. Never ask them to paste it here or hand-edit `~/.aieb-mcp/config.json`.
-
-When they return or continue, call `finish_aieb_connection`:
-
-- **Approved:** continue immediately; the connector stores only the scoped device token.
-- **Pending:** show the same URL once and ask them to finish the page.
-- **Expired:** call `connect_aieb` once for a fresh URL.
-- **Cancelled or expired subscription:** relay the result and stop.
-
-## 2. Verify paid access and check updates
-
-Call `get_skill` with `skill_id: meta-create-skill` and `path: SKILL.md`. This paid fetch is the setup gate. The free `ai-employee-map` can verify transport only, not the buyer's paid plan.
-
-- If the paid skill loads, setup is connected.
-- If it returns a locked, renewal, product, or tier response, setup is not complete; relay the exact next step and stop.
-- If the response includes a shell-version notice, tell the user their skills, connection, and progress stay intact, then give the host's update steps. On Codex use:
+- **Cowork / Claude Desktop:** confirm AI Employee Builder v0.30.0+ is installed under Customize → Personal plugins. Refresh the `the2hourclo/aieb-thin-plugin` marketplace, update the plugin, start a new session, then open the AIEB connector control and choose **Connect**.
+- **Claude Code:** refresh/install `ai-employee-builder@aieb-thin-plugin`, run `/reload-plugins`, then inspect `/mcp` and connect AIEB.
+- **Codex:** run the commands below, then start a fresh task:
 
   ```text
   codex plugin marketplace upgrade aieb-thin-plugin
   codex plugin add ai-employee-builder@aieb-thin-plugin
-  Start a fresh Codex thread and say: set up AIEB
+  Start a fresh Codex task and say: set up AIEB
   ```
 
-- If there is no update notice, confirm the shell is current without adding ceremony. Paid skill bodies are served fresh at fetch time and do not require a shell update.
+If Codex presents a hook review for this non-managed plugin, the user may review and trust the hooks; hook support is optional and does not authorize paid access. Do not improvise a key-bearing connector.
+
+## 1. Prove the remote connection and authorize when needed
+
+Call `get_skill` with `skill_id: meta-create-skill` and `path: SKILL.md`.
+
+- **Paid skill loads:** the remote connector and paid entitlement are working. Continue to Step 2.
+- **The host opens or requests authentication:** tell the user to click **Connect**. The first-party browser page tries, in order: purchase from this browser, existing course account, verified Google email, then Lemon Squeezy key as a fallback. Existing members already linked in Neon should need only one click.
+- **Authentication is missing, expired, or revoked:** use the host's native AIEB connector control to connect again, then retry the paid fetch once. OAuth refresh normally happens silently; do not force reconnection for a transient tool error.
+- **The user explicitly wants another account:** disconnect AIEB in the host's connector settings, reconnect, and choose the other account. Do not disconnect a working account merely to refresh it.
+- **Entitlement is cancelled, expired, wrong-product, or wrong-tier:** stop and relay the server's renewal or plan guidance. Reconnecting cannot override billing state.
+
+Never ask the user to paste a credential into chat. If they only want the free AI Employee Map, no paid connection is required; they can say **map my business**.
+
+## 2. Verify the shell version
+
+After the paid fetch succeeds, handle any shell-version notice it returns. Explain that skills, workspace state, and the existing account link stay intact across a plugin update. If there is no notice, keep the confirmation to one sentence. Paid skill bodies update server-side and do not require a reinstall.
 
 ## 3. Continue the workspace instead of restarting it
 
-After the first successful paid verification, read `.claude-state/progress-state.yaml` first. Despite its historical name, `.claude-state/` is shared AIEB product state across supported clients. Treat `.claude-state/onboarding-progress.json` only as a fallback hint when the YAML does not exist.
+Read `.claude-state/progress-state.yaml` first. Despite its historical name, `.claude-state/` is shared AIEB product state across supported clients. Treat `.claude-state/onboarding-progress.json` only as a fallback when the YAML is absent.
 
-- **Neither state file exists:** transition directly into onboarding. Fetch `get_skill(skill_id: "onboard", path: "SKILL.md")` and follow it end to end.
-- **`onboarding.completed_at` is set in the YAML:** do not re-onboard. Continue the user's task; if the managed workspace block is missing or stale, offer `check-setup`.
-- **The YAML exists and the current journey is in progress:** fetch `onboard` and resume from the recorded `current_step`, never from the beginning.
-- **Only the legacy JSON exists:** re-orient to the current `onboard` workflow instead of blindly resuming its old `current_step`, especially when it names retired digital-assets, voice-sample, or asset-folder work. Inspect workspace evidence, credit completed scaffolding or X-Ray work, and enter at the first unfinished checkpoint.
+- **Neither state file exists:** fetch `get_skill(skill_id: "onboard", path: "SKILL.md")` and follow it end to end.
+- **`onboarding.completed_at` exists:** do not re-onboard. Continue the user's task; offer `check-setup` only for a missing or stale managed workspace block.
+- **The current journey is in progress:** fetch `onboard` and resume from the recorded `current_step`.
+- **Only the legacy JSON exists:** inspect workspace evidence, credit completed work, and enter the current onboarding workflow at the first unfinished checkpoint.
 
-If setup was invoked while the user was already doing another task, continue that task now and begin or resume onboarding at the next natural pause. Connection is a doorway, not permission to hijack active work.
+If setup interrupted another task, return to that task and resume onboarding at the next natural pause. Connection is a doorway, not permission to hijack the work.
 
 ## Codex platform contract
 
@@ -82,8 +67,9 @@ When running in Codex:
 - Treat `AGENTS.md` as the workspace instruction file wherever a fetched legacy instruction says `CLAUDE.md`.
 - Treat `.agents/skills/` as the authored-skill directory wherever it says `.claude/skills/`.
 - Do not create Claude-only `.claude/agents`, `.claude/commands`, or `.claude/hooks` folders. Use Codex-native subagents, automations, and hooks.
-- Keep `.claude-state/` unchanged so the same workspace can resume across supported clients.
-- Use Codex plans and user-input controls when available; otherwise ask one clear question at a time.
-- Verify only the explicitly marked AIEB-managed section in `AGENTS.md`. Never replace the user's existing file or unrelated instructions.
+- Keep `.claude-state/` unchanged so the same workspace resumes across supported clients.
+- Verify only the explicitly marked AIEB-managed section in `AGENTS.md`; never replace unrelated instructions.
 
-Apply this contract to every fetched onboarding file and cross-skill call.
+---
+
+**Version:** 2.0 — remote OAuth connector, returning-member Neon fast path, and legacy-device migration (2026-08-31). Previous v1 used the local device proxy.

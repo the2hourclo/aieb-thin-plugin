@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * SessionStart hook (Node port of onboard_nudge.py — Node is guaranteed on
- * buyer machines because the connector runs on it; Python is not on stock
- * Windows): offer onboarding when the workspace looks fresh, and RESUME
- * onboarding when it started but never finished.
+ * SessionStart hook (Node port of onboard_nudge.py): offer onboarding when the
+ * workspace looks fresh, and RESUME onboarding when it started but never
+ * finished. This hook is optional host automation; connector authentication is
+ * owned by the remote MCP and never depends on this local Node process.
  *
  * Three workspace states, three behaviors (mutually exclusive with
  * roadmap_nudge, which owns the post-onboarding ladder):
@@ -115,38 +115,11 @@ function bumpCount(counterFile, cwd, newCount) {
   }
 }
 
-// Onboarding is a PAID skill: nudging "say onboard me" before the license is
-// connected dead-ends the buyer's very first action on the license wall
-// (observed in the 2026-07-10 journey audit). So the nudge checks activation
-// state and, when unconnected, leads with /setup-aieb instead.
-function isActivated() {
-  // A REAL credential, not the presence of a file.
-  //
-  // This used to count any non-trivial .json in ~/.aieb-mcp, on the theory that
-  // it was robust to whichever filename the proxy used. It was robust to the
-  // wrong thing: the proxy writes config.json on its FIRST run, before anyone
-  // has connected anything, so a buyer who never activated was told "you're all
-  // set, just say onboard me" — and then hit the licence wall on their very
-  // first action. On 2026-07-26, eight of ten paying members had never
-  // connected a device, and this hook was reassuring every one of them.
-  //
-  // The only thing that means connected is a device token, which is exactly
-  // what resolveConfig() in the proxy reads (cfg.device_token, `aieb_v1_`).
-  // Anything else — a legacy licence key, a half-written config, an empty
-  // scaffold — is NOT connected, and the setup path is always the safe answer.
-  try {
-    const home = process.env.USERPROFILE || process.env.HOME || os.homedir();
-    const configFile = path.join(home, ".aieb-mcp", "config.json");
-    if (!fs.existsSync(configFile)) return false;
-    const cfg = JSON.parse(fs.readFileSync(configFile, "utf8"));
-    return typeof cfg?.device_token === "string" && cfg.device_token.startsWith("aieb_v1_");
-  } catch {
-    // unreadable or malformed state = treat as not activated
-  }
-  return false;
-}
-
-const NUDGE_ACTIVATED =
+// The remote OAuth credential is deliberately host-managed, so a plugin hook
+// cannot and should not infer connection state from ~/.aieb-mcp. The paid-tool
+// probe is authoritative: if authentication is missing, the host opens its
+// normal Connect flow before the tool call continues.
+const NUDGE_REMOTE =
   `[${PLUGIN_NAME} hook] This looks like a fresh workspace for the ai-employee-builder ` +
   "plugin — onboarding hasn't run here and no skills have been authored yet. When " +
   "there's a natural opening (after acknowledging the user's actual first request, " +
@@ -156,7 +129,9 @@ const NUDGE_ACTIVATED =
   "me'. Or we can dive straight into what you came to do.\" Many buyers install this " +
   "into an existing project, so don't push a folder scaffold on them — if the user " +
   "says no, accept it gracefully and stay silent. If their first message is already " +
-  "about onboarding, just run it — don't double-offer.";
+  "about onboarding, call the paid `get_skill` tool for `onboard`; if the host asks " +
+  "the user to connect AIEB, let its native secure browser flow finish and then retry. " +
+  "Don't ask for a license key in chat and don't double-offer.";
 
 // Legacy per-phase progress file written by the onboard skill. Returns the
 // parsed object or null; a file with completed_at set is NOT mid-flight.
@@ -192,20 +167,6 @@ function buildResumeNudge(detail) {
     "came to do something specific, do their thing first and offer the resume once, at a natural pause."
   );
 }
-
-const SETUP_ACTION = IS_CODEX ? 'say "set up AIEB" in this Codex thread' : "run /setup-aieb";
-
-const NUDGE_NOT_ACTIVATED =
-  `[${PLUGIN_NAME} hook] The ai-employee-builder plugin is installed but no license is ` +
-  "connected on this machine yet, so paid skills (including onboarding) would hit the " +
-  "license wall. When there's a natural opening (after acknowledging the user's actual " +
-  'first request, not instead of it), offer ONCE, casually: "I see AI Employee Builder ' +
-  `is installed but not connected yet — ${SETUP_ACTION}. It gives you one secure link; ` +
-  "on that page you click Continue with Google with the address you bought with, and " +
-  "that's it, nothing to type. Takes about a minute. After that, say 'onboard me' and " +
-  "I'll set up your workspace and first skill. And if you came for the free AI Employee " +
-  "Map, that works right now with no account at all — just say 'map my business'.\" If " +
-  "the user says no, accept it gracefully and stay silent.";
 
 async function readStdin() {
   if (process.stdin.isTTY) return "";
@@ -282,16 +243,15 @@ async function main() {
   }
 
   bumpCount(counterFile, cwd, count + 1);
-  const activated = isActivated();
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "SessionStart",
-        additionalContext: activated ? NUDGE_ACTIVATED : NUDGE_NOT_ACTIVATED
+        additionalContext: NUDGE_REMOTE
       }
     })
   );
-  logEvent("nudge-emitted", { count: count + 1, activated });
+  logEvent("nudge-emitted", { count: count + 1, auth: "remote-host-managed" });
 }
 
 main()

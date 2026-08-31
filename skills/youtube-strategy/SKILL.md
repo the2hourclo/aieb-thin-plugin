@@ -1,6 +1,6 @@
 ---
 name: youtube-strategy
-description: "YouTube employee · Plan YouTube channel strategy and long-form videos that build a qualified audience and create demand for an offer. Owns offer-linked channel and series strategy, video ideas, YouTube research, positioning, titles, thumbnails, spoken hooks, plans, presentations, scripts, and script-to-visual sequencing. USE WHEN user says 'youtube', 'channel strategy', 'youtube content strategy', 'video series', 'videos that lead to my offer', 'build an audience of buyers', 'video ideas', 'youtube title', 'video hook', 'plan video', 'youtube script', or 'video slides'. Do NOT use for non-YouTube hooks (use write-hook), image rendering (use visual-content), short-form reels (use reel-creator), generic research (use research), publishing (use publishing), or post-publish reporting (use metrics-tracking)."
+description: YouTube employee · Plan and produce long-form YouTube videos — topic and competitor research, breakout analysis, ideas, positioning, CTR titles, thumbnail concepts and render-ready briefs, spoken hooks, production plans, narrated presentation decks, full scripts, and script-visual plans. Uses live YouTube data when connected and evidence-labeled manual research when it is not. USE WHEN the user asks for YouTube research, video ideas, titles, thumbnails, hooks, positioning, planning, slides, scripts, or visuals for a long-form video. Do NOT use for non-YouTube hooks, short-form posts, standalone email/social copy, generic web research, unrelated image work, or publishing/analytics operations after production.
 ---
 
 # youtube-strategy — MCP loader
@@ -22,11 +22,11 @@ Then follow exactly what it returns. That returned SKILL.md is the real router �
 
 **If a `get_skill` tool truly does NOT exist on any server after searching**, the connector is missing on this machine. Stop and tell the user the fix for THEIR surface, then wait:
 
-> **Claude Code:** The AI Employee Builder connector isn't set up yet — run /setup-aieb, open the secure link it gives you, then /reload-plugins. Never paste a license key into chat.
+> **Claude Code:** Update AI Employee Builder to v0.30.0+, run /reload-plugins, inspect /mcp, and connect AIEB through the secure browser OAuth page. Never paste a license key into chat.
 >
-> **Claude Desktop / Cowork:** Make sure the AI Employee Builder plugin is installed (Customize → Personal plugins — if it's missing, add the marketplace `the2hourclo/aieb-thin-plugin` and install it), then run /setup-aieb here in chat. It gives you a secure page where you enter the key; the plugin saves only an opaque device token. Never paste the key into chat. Still nothing after that? Say "check my setup" and I'll walk you through it.
+> **Claude Desktop / Cowork:** Update the AI Employee Builder Personal plugin to v0.30.0+, open its AIEB connector control, and click Connect. Existing verified members are recognized from their AIEB account; a Lemon Squeezy key is only a secure-page fallback. No local Node runtime is required. Still nothing? Say "check my setup".
 >
-> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin`, start a fresh Codex thread, then say "set up AIEB". The setup skill opens the same secure activation page and stores only an opaque device token. Never paste a license key into chat.
+> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin` to v0.30.0+, start a fresh Codex task, then say "set up AIEB". Connect through the remote OAuth page; never paste a license key into chat.
 
 Do not guess at or reconstruct the skill's content in the meantime.
 
@@ -45,7 +45,7 @@ If an instruction says to run a script, fetch its text with `get_skill` (same sk
 
 ## 4. Locked skill (upgrade message)
 
-If `get_skill` returns a 🔒 message saying this skill is part of a higher plan, that is a NORMAL answer, not an error: relay the message and the upgrade link to the user warmly, then stop. The existing device connection unlocks it after they upgrade — nothing to reinstall and no key belongs in chat. Do not retry, and never reconstruct the skill's content yourself.
+If `get_skill` returns a 🔒 message saying this skill is part of a higher plan, that is a NORMAL answer, not an error: relay the message and the upgrade link to the user warmly, then stop. The existing account connection unlocks it after they upgrade — nothing to reinstall and no key belongs in chat. Do not retry, and never reconstruct the skill's content yourself.
 
 ## 5. No license / errors
 

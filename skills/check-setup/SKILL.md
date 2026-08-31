@@ -1,13 +1,33 @@
 ---
 name: check-setup
-description: Setup employee · Verify and repair this AI Employee Builder setup — connector, license plan, workspace folders, onboarding state, and the managed CLAUDE.md block — then offer consent-gated fixes. USE WHEN user says 'check my setup', 'verify my setup', 'is my setup ok', 'is everything connected', 'something seems broken', 'my skills stopped working', 'fix my setup', 'setup health check', 'am I connected', 'why isn't this working', or another skill or message told them to run a setup check. Safe to run any time — it changes nothing without an explicit yes.
+description: Setup employee · Verify and repair this AI Employee Builder setup — connector, license plan, surface-appropriate workspace folders, onboarding state, and the managed workspace-instructions block — then offer consent-gated fixes. USE WHEN user says 'check my setup', 'verify my setup', 'is my setup ok', 'is everything connected', 'something seems broken', 'my skills stopped working', 'fix my setup', 'setup health check', 'am I connected', 'why isn't this working', or another skill or message told them to run a setup check. Safe to run any time — it changes nothing without an explicit yes.
 ---
 
 # Check Setup — Verify and Repair
 
-You are checking this person's AI Employee Builder setup and fixing only what they approve. They are a business owner, not a developer — report every finding in plain words (say "your workspace map file" before you say "CLAUDE.md"), and never show raw errors without translating them.
+You are checking this person's AI Employee Builder setup and fixing only what they approve. They are a business owner, not a developer — report every finding in plain words (say "your workspace map file" before its technical filename), and never show raw errors without translating them.
 
 **Hard rule: never create, edit, or delete ANY file without an explicit yes.** Steps 1–3 only look and report. Step 4 fixes — one approved item at a time.
+
+## Workflow Routing
+
+| Entry condition | Route |
+|---|---|
+| User asks for a full setup check or says the product is broken | Run Steps 1–4 in order: prove the connector and plan, inspect only the current surface's files, diagnose, then offer consent-gated repairs. |
+| User reports only a connector or license problem | Run Step 1 first. Continue to file checks only if the user also reports a workspace problem. |
+| Client cannot read the working folder | Run the live connector and plan probes, skip file checks, and say plainly what could not be verified. |
+| User asks about automated sequences or Kit, or Email OS is already configured | Include the optional Email OS row and hand its own checks to `email-os`; otherwise record `➖ optional — not configured`. |
+
+### Surface contract — choose once before checking files
+
+Identify the current client, then use one vocabulary consistently:
+
+| Surface | Workspace instructions | Authored skills | Other builder folders |
+|---|---|---|---|
+| Claude Code / Cowork with folder access | `CLAUDE.md` | `.claude/skills/` | `.claude/agents/`, `.claude/commands/`, `.claude/hooks/` |
+| Codex | `AGENTS.md` | `.agents/skills/` | None — agents and automation are plugin capabilities; never create or flag missing Claude-only folders |
+
+`.claude-state/` keeps its historical name on every surface. It is shared AIEB product state, so Codex must read it unchanged. This portability rule was added after the 2026-08-31 served-catalog audit found that a healthy Codex workspace could be reported broken for lacking Claude-only folders. Carve-out: if a client cannot read the working folder, skip file checks instead of guessing its surface from filenames.
 
 ## Step 1 — Connector and plan (prove it with live calls — never assume)
 
@@ -15,7 +35,7 @@ This skill may have loaded from the local plugin, so reading it proves nothing a
 
 1. **Does the connector work?** Find a tool ending in `get_skill` (the full name varies by surface — Claude Code: `mcp__aieb__get_skill`; Cowork/Desktop: `mcp__plugin_ai-employee-builder_aieb__get_skill`; on Cowork run a tool search for "get_skill" first, tools load lazily). Call it with `skill_id: ai-employee-map`, `path: SKILL.md` — the free skill, it serves even without a license.
    - Content comes back → the connector is healthy. Say so plainly: "Your connection to the AI Employee Builder server works."
-   - No `get_skill` tool exists after searching → the connector is missing on this machine. **Claude Code:** run `/setup-aieb`, open the secure link it gives, then `/reload-plugins`. **Cowork/Desktop:** install the plugin (Customize → Personal plugins → marketplace `the2hourclo/aieb-thin-plugin`), then run `/setup-aieb` in chat.
+   - No `get_skill` tool exists after searching → the connector is missing in this session. Install or update AI Employee Builder to v0.30.0+, start a fresh session/task, then use the host's AIEB connector control and click **Connect**. **Codex:** update `ai-employee-builder@aieb-thin-plugin` and start a fresh task. **Claude Code:** refresh the plugin, `/reload-plugins`, then inspect `/mcp`. **Cowork/Desktop:** update the Personal plugin and connect AIEB from its connector control. No local Node runtime or device link is required.
    - The call itself errors → note the exact error for Step 3; a license/entitlement message means the connector is fine but the license needs attention (Step 4's key row).
 2. **Which plan are they on?** Call the `find_skill` tool with query "write a newsletter" and look at how the `write` skill comes back:
    - `write` is marked 🔒 locked → they're on the **AI Employee Builder** plan (the builder skills).
@@ -24,17 +44,18 @@ This skill may have loaded from the local plugin, so reading it proves nothing a
 
 Report both in one or two sentences before moving on. If the probes pass here but the user says "nothing works", the broken thing is usually a different chat or device — ask which machine had the problem.
 
-## Step 2 — Workspace checks (pick the branch that matches where you're running)
+## Step 2 — Workspace checks (use the surface contract)
 
-### In Claude Code (or any client that can read the working folder)
+### In Claude Code or Codex
 
 Check these, in order, and keep a simple found/missing list:
 
-1. **Builder folders:** `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, `.claude/hooks/` — created by onboarding.
+1. **Authored-skill home:** Claude checks `.claude/skills/`; Codex checks `.agents/skills/`. On Claude, also check `.claude/agents/`, `.claude/commands/`, and `.claude/hooks/`. On Codex, those three folders are not applicable and must never count as missing.
 2. **Onboarding state:** `.claude-state/onboarding-progress.json` — exists means onboarding ran; missing means it never ran here (that's the usual cause of "nothing is set up").
-3. **Workspace map (CLAUDE.md):** the file exists AND contains managed blocks whose start markers look like `<!-- managed-by-ai-employee-builder:…:start v=N -->`.
+3. **Workspace map:** the surface's workspace-instructions file exists (`CLAUDE.md` on Claude; `AGENTS.md` on Codex) AND contains managed blocks whose start markers look like `<!-- managed-by-ai-employee-builder:…:start v=N -->`.
 4. **Template version:** compare that `v=N` number against the version named in the header that arrived with this very skill text (the "Workspace check" line names the current number). Same → up to date. Missing or lower → the workspace map is stale.
-5. **Content-employee assets (only if Step 1 said Chief Leverage Officers):** the `<!-- AIEB-CONTENT-EMPLOYEES:start -->` block in CLAUDE.md, voice samples in `digital-assets/voice/` (or wherever that block's table points), and the brand doc it names (usually `marketing/brand-positioning.md`).
+5. **Content-employee assets (only if Step 1 said Chief Leverage Officers):** the `<!-- AIEB-CONTENT-EMPLOYEES:start -->` block in the chosen workspace-instructions file, `digital-assets/voice/voice-profile.md`, at least one approved sample named by that profile, and the brand doc the block names (usually `marketing/brand-positioning.md`).
+6. **Email OS (optional):** check it only when the user asks about automated sequences/Kit, or when an `email-os` skill/configuration is already present in the surface's authored-skill home. Otherwise record `➖ optional — not configured` and continue. When it is present or requested, hand its connector, Notion, and Kit checks to `email-os`; do not make general AIEB setup depend on it.
 
 ### In Cowork / Claude Desktop
 
@@ -56,17 +77,18 @@ Offer ONLY the fixes that match findings, as a short menu. For each: say exactly
 
 | Finding | Offer |
 |---|---|
-| Managed block missing or `v=` stale | Refresh ONLY the text between the `:start` and `:end` markers with the current template (call `get_skill` with skill_id `onboard` and path `workflows/scaffold-workspace.md` for the canonical block text). Blocks that exist in the workspace but NOT in the current template (e.g. the retired v=4 `skill-routing`, `quick-start`, `claude-folders`, `claude-state`, `update-check` blocks) are DELETED marker-to-marker, not refreshed. Never touch anything outside the markers; show what changes first. |
-| Builder folders missing | Create the missing empty folders. |
+| Managed block missing or `v=` stale | Refresh ONLY the text between the `:start` and `:end` markers in the surface's workspace-instructions file with the current template (re-fetch `onboard` and use its `scaffold-workspace` workflow for the canonical block text). On Codex, apply its platform mapping and update `AGENTS.md`, never `CLAUDE.md`. Blocks that exist in the workspace but NOT in the current template (e.g. the retired v=4 `skill-routing`, `quick-start`, `claude-folders`, `claude-state`, `update-check` blocks) are DELETED marker-to-marker, not refreshed. Never touch anything outside the markers; show what changes first. |
+| Surface-appropriate builder folders missing | Create only the missing folders named by the surface contract. Never create `.claude/agents/`, `.claude/commands/`, or `.claude/hooks/` on Codex. |
 | Onboarding never ran | Suggest running the `onboard` skill start to finish rather than patching pieces. |
-| Voice/brand assets missing (Chief Leverage Officers) | Suggest running `setup-content-employees`. |
-| Key or connection problems on ANY device/chat | The fix is the same everywhere: run `/setup-aieb` (or say "set up my AI Employee Builder connection") — it gives a secure one-time link. On that page they click **Continue with Google** and pick the address they bought with, which connects them with nothing to type. Only if Google finds no purchase on that address do they need the license key, from their Lemon Squeezy receipt email, entered on the activation PAGE. **The key never goes into chat.** (A connector older than v0.13 lacks the secure link flow — update the plugin first.) |
-| "A skill keeps doing X and I want it to stop/change" — and it's a skill THEY built (a real folder exists in `.claude/skills/<name>/`) | That file is theirs — route to the `retrospective` skill. It shows a before/after edit to their own skill file and changes nothing until they say yes. Do NOT draft an overrides file for a skill they own — nothing ever reads it. |
+| Voice profile, approved sample, or brand asset missing (Chief Leverage Officers) | Suggest running `setup-content-employees`. A sample folder without `voice-profile.md` is not a calibrated setup. |
+| Email OS requested or already configured | Hand off to `email-os` for its own preflight. If it is not installed/configured, show `➖ optional — not configured`; offer setup only when the user asked for automated sequences or Kit. |
+| Account or connection problems on ANY device/chat | Update the plugin to v0.30.0+, then use the host's native AIEB connector control and click **Connect**. The first-party page checks the purchase browser, existing course account, and verified Google email before offering the Lemon Squeezy key fallback. Existing Neon-linked members should reconnect without typing a key or consuming another activation. **The key never goes into chat.** A working legacy v0.29.x device connection may stay in place during migration; do not delete it manually. |
+| "A skill keeps doing X and I want it to stop/change" — and it's a skill THEY built (a real folder exists in the surface's authored-skill home) | If `retrospective` is available on this plan, route there: it shows a before/after edit and changes nothing until they say yes. If it is locked or unavailable, leave the file unchanged and explain that the guided skill-improvement workflow requires Builder access; do not improvise the repair inside a setup check. Do NOT draft an overrides file for a skill they own — nothing ever reads it. |
 | "A skill keeps doing X and I want it to stop/change" — and it's a served skill (no local folder; it comes from the AI Employee Builder server, like write or copywriter) | That's a customization, not a breakage: their standing adjustments belong in `digital-assets/overrides/<skill-id>.md` — it survives every content update. Offer to draft one. |
 
-**Quick guide — which fix goes with which skill** (full flow lives in the `retrospective` skill; origin: 2026-07-04 buyer-journey audit — four fix mechanisms contradicted each other at "my skill keeps doing X wrong"):
+**Quick guide — which fix goes with which skill** (when `retrospective` is available, the full guided flow lives there; this fallback remains usable without it. Origin: 2026-07-04 buyer-journey audit — four fix mechanisms contradicted each other at "my skill keeps doing X wrong"):
 
-- Skill they built (folder in `.claude/skills/<name>/`) → edit their file via `retrospective`, before/after shown, applied only on yes — never an overrides file.
+- Skill they built (folder in `.claude/skills/<name>/` on Claude or `.agents/skills/<name>/` on Codex) → if `retrospective` is available, use its before/after, approval-gated edit; otherwise leave the file unchanged and explain that Builder access is required — never invent an inline repair or an overrides file.
 - Served skill (no local folder — fetched from the AI Employee Builder server) → `digital-assets/overrides/<skill-id>.md`; also offer to send one anonymized friction note to the author (the plugin's `skill-telemetry/note-friction-procedure.md`; only after an explicit yes).
 - Third-party plugin skill (read-only cache from another author) → a feedback note to that plugin's author — never edit the cache, never an overrides file.
 
@@ -81,12 +103,18 @@ AI Employee Builder — Setup Check
 ──────────────────────────────────
 Connector + license   ✅ working (this session)
 Plan                  ✅ Chief Leverage Officers
-Builder folders       ✅ all present
+Authored-skill home   ✅ .agents/skills/ present (Codex)
 Onboarding state      ✅ completed
-Workspace map         ⚠️ v=1 (current v=2) — refresh offered, declined
-Voice samples         ❌ digital-assets/voice/ is empty — run setup-content-employees
+Workspace map         ⚠️ AGENTS.md v=1 (current v=2) — refresh offered, declined
+Voice profile         ❌ digital-assets/voice/voice-profile.md missing — run setup-content-employees
+Approved samples      ✅ 2 files named by the profile
 Brand doc             ✅ marketing/brand-positioning.md
+Email OS              ➖ optional — not configured
 Repairs applied       1 of 2 offered
 ```
 
 Then one closing sentence: what (if anything) they should do next, in plain words.
+
+---
+
+**Version:** 2.0 — remote OAuth connector diagnostics with existing-member migration (2026-08-31). Previous v1 diagnosed the local device proxy.

@@ -2,9 +2,8 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
     "aieb": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["${PLUGIN_ROOT}/scripts/aieb-mcp-proxy.mjs"]
+      "type": "http",
+      "url": "https://api.chiefleverageofficers.com/mcp"
     }
   }
 }

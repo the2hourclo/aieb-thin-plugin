@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * SessionStart hook (Node port of update_ping.py — Node is guaranteed on buyer
- * machines because the connector runs on it; Python is not on stock Windows).
+ * SessionStart hook (Node port of update_ping.py). This is optional host
+ * automation where Node hooks are supported. The remote connector does not
+ * depend on this process or on a buyer-installed Node runtime.
  *
  * Two nudge tiers, one throttle:
  *   1. SHELL: read this plugin's installed version, compare against the hosted
@@ -26,7 +27,7 @@ const MARKETPLACE = "aieb-thin-plugin";
 const IS_CODEX = Boolean(process.env.PLUGIN_ROOT);
 const WORKSPACE_MAP_FILE = IS_CODEX ? "AGENTS.md" : "CLAUDE.md";
 const THROTTLE_HOURS = 24;
-const VERSION_URL = process.env.AIEB_VERSION_URL || "https://aieb-gated-mcp.vercel.app/version";
+const VERSION_URL = process.env.AIEB_VERSION_URL || "https://api.chiefleverageofficers.com/version";
 const TIMEOUT_MS = 3000; // short, so a slow network never stalls session start
 
 function claudeRoot() {

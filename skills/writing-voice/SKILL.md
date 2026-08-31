@@ -25,11 +25,11 @@ Then follow exactly what it returns. That returned SKILL.md is the real router �
 
 **If a `get_skill` tool truly does NOT exist on any server after searching**, the connector is missing on this machine. Stop and tell the user the fix for THEIR surface, then wait:
 
-> **Claude Code:** The AI Employee Builder connector isn't set up yet — run /setup-aieb, open the secure link it gives you, then /reload-plugins. Never paste a license key into chat.
+> **Claude Code:** Update AI Employee Builder to v0.30.0+, run /reload-plugins, inspect /mcp, and connect AIEB through the secure browser OAuth page. Never paste a license key into chat.
 >
-> **Claude Desktop / Cowork:** Make sure the AI Employee Builder plugin is installed (Customize → Personal plugins — if it's missing, add the marketplace `the2hourclo/aieb-thin-plugin` and install it), then run /setup-aieb here in chat. It gives you a secure page where you enter the key; the plugin saves only an opaque device token. Never paste the key into chat. Still nothing after that? Say "check my setup" and I'll walk you through it.
+> **Claude Desktop / Cowork:** Update the AI Employee Builder Personal plugin to v0.30.0+, open its AIEB connector control, and click Connect. Existing verified members are recognized from their AIEB account; a Lemon Squeezy key is only a secure-page fallback. No local Node runtime is required. Still nothing? Say "check my setup".
 >
-> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin`, start a fresh Codex thread, then say "set up AIEB". The setup skill opens the same secure activation page and stores only an opaque device token. Never paste a license key into chat.
+> **Codex:** Install or update `ai-employee-builder@aieb-thin-plugin` to v0.30.0+, start a fresh Codex task, then say "set up AIEB". Connect through the remote OAuth page; never paste a license key into chat.
 
 Do not guess at or reconstruct the skill's content in the meantime.
 
@@ -48,7 +48,7 @@ If an instruction says to run a script, fetch its text with `get_skill` (same sk
 
 ## 4. Locked skill (upgrade message)
 
-If `get_skill` returns a 🔒 message saying this skill is part of a higher plan, that is a NORMAL answer, not an error: relay the message and the upgrade link to the user warmly, then stop. The existing device connection unlocks it after they upgrade — nothing to reinstall and no key belongs in chat. Do not retry, and never reconstruct the skill's content yourself.
+If `get_skill` returns a 🔒 message saying this skill is part of a higher plan, that is a NORMAL answer, not an error: relay the message and the upgrade link to the user warmly, then stop. The existing account connection unlocks it after they upgrade — nothing to reinstall and no key belongs in chat. Do not retry, and never reconstruct the skill's content yourself.
 
 ## 5. No license / errors
 
