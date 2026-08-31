@@ -21,9 +21,11 @@ Use the AIEB MCP tools available in this session. Tool prefixes vary by host, so
 
 Search lazy-loaded tools for one ending in `get_skill`. If it does not exist after a real tool search, the connector did not load.
 
-- **Cowork / Claude Desktop:** confirm AI Employee Builder v0.31.1+ is installed under Customize → Personal plugins. Refresh the `the2hourclo/aieb-thin-plugin` marketplace, update the plugin, and start a new session. To launch setup, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. After selection, Cowork may display the shorter `/setup-aieb` chip; that is expected. The natural-language route **set up AIEB** also works. Then open the AIEB connector control and choose **Connect** when prompted.
+- **Cowork / Claude Desktop:** confirm AI Employee Builder v0.31.2+ is installed. Update the marketplace through **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then open **Customize → Plugins → AI Employee Builder → Update** if that button appears. Start a new session. To launch setup, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. After selection, Cowork may display the shorter `/setup-aieb` chip; that is expected. The natural-language route **set up AIEB** also works. When authorization is needed, open **Customize → Connectors → aieb** and reconnect. Disconnect first only if the host falsely leaves an expired authorization marked **Connected**.
 
 > **Cowork invocation rule — origin 2026-09-01:** A real Cowork test treated a bare typed `/setup-aieb` as an unknown skill, while the namespaced plugin skill launched correctly and then displayed the short chip. This namespace requirement applies to selecting the plugin skill in Cowork; Claude Code's installed slash command and the natural-language route remain valid.
+
+> **Cowork update and reconnect rule — origin 2026-09-01:** Live UI verification showed that marketplace refresh, installed-plugin update, and connector authorization live on three different screens. Follow the named routes above. Do not disconnect a healthy connector merely to refresh the plugin; disconnect-first is reserved for the false-Connected expired state.
 - **Claude Code:** refresh/install `ai-employee-builder@aieb-thin-plugin`, run `/reload-plugins`, then inspect `/mcp` and connect AIEB.
 - **Codex:** run the commands below, then start a fresh task:
 
@@ -42,7 +44,7 @@ Call `get_skill` with `skill_id: meta-create-skill` and `path: SKILL.md`.
 - **Paid skill loads:** the remote connector and paid entitlement are working. Continue to Step 2.
 - **The host opens or requests authentication:** tell the user to click **Connect**. The first-party browser page tries, in order: purchase from this browser, existing course account, verified Google email, then Lemon Squeezy key as a fallback. Existing members already linked in Neon should need only one click.
 - **The response says AIEB is securely connected but member setup is still needed:** OAuth succeeded. Do not reconnect and do not send the user to a checkout form. Continue to Step 2 and complete the four answers in this conversation.
-- **Authentication is missing, expired, or revoked:** use the host's native AIEB connector control to connect again, then retry the paid fetch once. OAuth refresh normally happens silently; do not force reconnection for a transient tool error.
+- **Authentication is missing, expired, or revoked:** use the host's native AIEB connector control to connect again, then retry the paid fetch once. In Cowork/Desktop, open **Customize → Connectors → aieb** and reconnect; disconnect first only when the host falsely leaves the expired authorization marked **Connected**. OAuth refresh normally happens silently; do not force reconnection for a transient tool error.
 - **The user explicitly wants another account:** disconnect AIEB in the host's connector settings, reconnect, and choose the other account. Do not disconnect a working account merely to refresh it.
 - **Entitlement is cancelled, expired, wrong-product, or wrong-tier:** stop and relay the server's renewal or plan guidance. Reconnecting cannot override billing state.
 
@@ -90,4 +92,4 @@ When running in Codex:
 
 ---
 
-**Version:** 2.2 — Cowork setup now names the required namespaced skill selection and its shortened selected chip (2026-09-01). Previous v2.1 added conversational member intake after remote OAuth.
+**Version:** 2.3 — Cowork setup now matches the verified marketplace-update, plugin-update, and expired-authorization UI routes (2026-09-01). Previous v2.2 clarified namespaced skill selection.

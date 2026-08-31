@@ -9,8 +9,8 @@ Load and follow the local `setup-aieb` skill. Do not recreate the retired local 
 
 The shortest buyer path is:
 
-1. Confirm AI Employee Builder plugin v0.31.1 or later is installed. In Cowork/Desktop, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. The selected chip may shorten to `/setup-aieb`; that is expected. The user can also say **set up AIEB** instead.
-2. Find the AIEB remote connector and click **Connect** when the host requests authorization.
+1. Confirm AI Employee Builder plugin v0.31.2 or later is installed. In Cowork/Desktop, update the marketplace through **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then open **Customize → Plugins → AI Employee Builder → Update** if that button appears. Start a fresh session, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. The selected chip may shorten to `/setup-aieb`; that is expected. The user can also say **set up AIEB** instead.
+2. Find the AIEB remote connector and click **Connect** when the host requests authorization. In Cowork/Desktop, an expired authorization is repaired under **Customize → Connectors → aieb**. Reconnect there; disconnect first only if the host falsely leaves the expired connector marked **Connected**.
 3. On the first-party page, use the purchase already in this browser, an existing course account, or verified Google email. Use the Lemon Squeezy key only when none of those identifies the purchase.
 4. Return here and prove paid access with `get_skill(skill_id: "meta-create-skill", path: "SKILL.md")`.
 5. If the server says the connector is secure but member setup is incomplete, ask the four business-context questions and call `complete_aieb_onboarding`. Do not reconnect or send the buyer back to checkout.

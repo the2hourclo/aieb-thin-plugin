@@ -5,7 +5,7 @@ This plugin is intentionally thin. It contains routing skills, commands, and opt
 - MCP and OAuth resource: `https://api.chiefleverageofficers.com/mcp`
 - Customer onboarding: `https://course.chiefleverageofficers.com/clo-course/get-access-aieb.html`
 
-## Connection model (v0.30.0+; conversational setup in v0.31.0+; Cowork launch fix in v0.31.1)
+## Connection model (v0.30.0+; conversational setup in v0.31.0+; verified Cowork UI paths in v0.31.2)
 
 The plugin declares AIEB as a remote HTTP MCP with OAuth resource metadata. Cowork, Claude Code, and Codex can use their native connector authentication instead of launching a local Node proxy.
 
@@ -41,7 +41,7 @@ No transcript, prompt, uploaded file, memory, license key, or customer business 
 /setup-aieb
 ```
 
-In Cowork/Desktop, update the AI Employee Builder Personal plugin to v0.31.1+, start a fresh session, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. Cowork may shorten the selected chip to `/setup-aieb`; that is expected. The buyer can instead say **set up AIEB**. Open the AIEB connector control and click **Connect** if prompted. The browser handles authentication; no local-runtime toggle or local Node installation is required.
+In Cowork/Desktop, update the marketplace through **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then open **Customize → Plugins → AI Employee Builder → Update** if that button appears. Start a fresh session, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. Cowork may shorten the selected chip to `/setup-aieb`; that is expected. The buyer can instead say **set up AIEB**. For an expired authorization, open **Customize → Connectors → aieb** and reconnect. Disconnect first only when the host falsely leaves the expired connector marked **Connected**. The browser handles authentication; no local-runtime toggle or local Node installation is required.
 
 ## Connector declaration
 
@@ -71,8 +71,9 @@ Both `.mcp.json` and `mcp.json` declare the remote resource:
 
 | Symptom | Buyer-safe fix |
 |---|---|
-| Connector missing from the session | Update to v0.31.1+, reload/start a fresh session, then inspect the host's connector control. In Cowork, select `/ai-employee-builder:setup-aieb`; a bare typed `/setup-aieb` may not resolve before selection. |
+| Connector missing from the session | In Cowork, run **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then **Customize → Plugins → AI Employee Builder → Update** if shown. Start a fresh session and select `/ai-employee-builder:setup-aieb`; a bare typed `/setup-aieb` may not resolve before selection. |
 | Host asks to authenticate | Click **Connect**, finish the secure browser flow, and retry the paid action. |
+| Authorization expired, but Cowork still shows Connected | Open **Customize → Connectors → aieb**, disconnect the falsely connected entry, then reconnect. If it is not falsely marked Connected, reconnect without the disconnect step. |
 | Connected, but member setup is incomplete | Stay in the same session. In Cowork, select `/ai-employee-builder:setup-aieb` (the selected chip may shorten to `/setup-aieb`) or say **set up AIEB**. It asks four short questions and completes onboarding through the authenticated connector. Do not reconnect. |
 | Returning buyer is not recognized | Use the Google address attached to the purchase; use a Lemon Squeezy key only on the secure browser page if needed. |
 | Subscription cancelled or lapsed | Resume or renew, then retry. Reinstallation is unnecessary. |
