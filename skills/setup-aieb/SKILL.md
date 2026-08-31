@@ -33,23 +33,39 @@ Search lazy-loaded tools for one ending in `get_skill`. If it does not exist aft
 
 If Codex presents a hook review for this non-managed plugin, the user may review and trust the hooks; hook support is optional and does not authorize paid access. Do not improvise a key-bearing connector.
 
-## 1. Prove the remote connection and authorize when needed
+## 1. Connect through the browser when needed
 
 Call `get_skill` with `skill_id: meta-create-skill` and `path: SKILL.md`.
 
 - **Paid skill loads:** the remote connector and paid entitlement are working. Continue to Step 2.
 - **The host opens or requests authentication:** tell the user to click **Connect**. The first-party browser page tries, in order: purchase from this browser, existing course account, verified Google email, then Lemon Squeezy key as a fallback. Existing members already linked in Neon should need only one click.
+- **The response says AIEB is securely connected but member setup is still needed:** OAuth succeeded. Do not reconnect and do not send the user to a checkout form. Continue to Step 2 and complete the four answers in this conversation.
 - **Authentication is missing, expired, or revoked:** use the host's native AIEB connector control to connect again, then retry the paid fetch once. OAuth refresh normally happens silently; do not force reconnection for a transient tool error.
 - **The user explicitly wants another account:** disconnect AIEB in the host's connector settings, reconnect, and choose the other account. Do not disconnect a working account merely to refresh it.
 - **Entitlement is cancelled, expired, wrong-product, or wrong-tier:** stop and relay the server's renewal or plan guidance. Reconnecting cannot override billing state.
 
 Never ask the user to paste a credential into chat. If they only want the free AI Employee Map, no paid connection is required; they can say **map my business**.
 
-## 2. Verify the shell version
+## 2. Complete missing member context after OAuth
+
+If the paid fetch says member setup is still needed, ask these four questions conversationally. Reuse answers already present in the current conversation; never make the user repeat information you already have.
+
+1. What does the business sell, and to whom?
+2. Which recurring job should the first AI Employee take over?
+3. How often does that job happen, and how much time does it currently take?
+4. What does a good finished result look like?
+
+When all four answers are clear, call `complete_aieb_onboarding` with `business_offer`, `recurring_job`, `frequency_and_time`, and `good_result`. Never invent an answer. After success, retry `get_skill(skill_id: "meta-create-skill", path: "SKILL.md")` once to prove paid access is open.
+
+- If `complete_aieb_onboarding` is absent after a real tool search, this session loaded an older connector catalog. Update the plugin, start a fresh session, reconnect once, and resume from the answers already collected.
+- If the user already completed the Get Access form, the paid fetch should load immediately and these questions must not run again.
+- Missing intake is a setup state, not an authentication or billing failure. Do not ask for a key or send the user back through OAuth.
+
+## 3. Verify the shell version
 
 After the paid fetch succeeds, handle any shell-version notice it returns. Explain that skills, workspace state, and the existing account link stay intact across a plugin update. If there is no notice, keep the confirmation to one sentence. Paid skill bodies update server-side and do not require a reinstall.
 
-## 3. Continue the workspace instead of restarting it
+## 4. Continue the workspace instead of restarting it
 
 Read `.claude-state/progress-state.yaml` first. Despite its historical name, `.claude-state/` is shared AIEB product state across supported clients. Treat `.claude-state/onboarding-progress.json` only as a fallback when the YAML is absent.
 
@@ -72,4 +88,4 @@ When running in Codex:
 
 ---
 
-**Version:** 2.0 — remote OAuth connector, returning-member Neon fast path, and legacy-device migration (2026-08-31). Previous v1 used the local device proxy.
+**Version:** 2.1 — remote OAuth first, then conversational member intake through the connected agent (2026-08-31). Previous v2 introduced remote OAuth and legacy-device migration.

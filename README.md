@@ -5,7 +5,7 @@ This plugin is intentionally thin. It contains routing skills, commands, and opt
 - MCP and OAuth resource: `https://api.chiefleverageofficers.com/mcp`
 - Customer onboarding: `https://course.chiefleverageofficers.com/clo-course/get-access-aieb.html`
 
-## Connection model (v0.30.0+)
+## Connection model (v0.30.0+; conversational setup in v0.31.0+)
 
 The plugin declares AIEB as a remote HTTP MCP with OAuth resource metadata. Cowork, Claude Code, and Codex can use their native connector authentication instead of launching a local Node proxy.
 
@@ -15,6 +15,7 @@ The plugin declares AIEB as a remote HTTP MCP with OAuth resource metadata. Cowo
 4. A returning buyer continues with an existing course session or the Google address attached to the purchase. The server first resolves the member and entitlement already stored in Neon, so it does not consume another Lemon Squeezy activation.
 5. If that member has only a legacy local-device activation, the server atomically converts that existing slot into the first remote connector grant. A genuinely additional connector may activate another permitted instance server-side.
 6. The host receives a short-lived access token plus a rotating refresh token. Only token hashes are stored.
+7. If the buyer has not completed the four member-intake answers, the connector remains authenticated while paid skill delivery pauses. `/setup-aieb` asks the questions in Cowork and calls `complete_aieb_onboarding`; it never sends the buyer through OAuth a second time.
 
 A Lemon Squeezy license key remains a secure-page fallback. It is never requested in chat, placed in an MCP config file, or returned to the plugin.
 
@@ -72,6 +73,7 @@ Both `.mcp.json` and `mcp.json` declare the remote resource:
 |---|---|
 | Connector missing from the session | Update to v0.30.0+, reload/start a fresh session, then inspect the host's connector control. |
 | Host asks to authenticate | Click **Connect**, finish the secure browser flow, and retry the paid action. |
+| Connected, but member setup is incomplete | Stay in the same session. `/setup-aieb` asks four short questions and completes onboarding through the authenticated connector. Do not reconnect. |
 | Returning buyer is not recognized | Use the Google address attached to the purchase; use a Lemon Squeezy key only on the secure browser page if needed. |
 | Subscription cancelled or lapsed | Resume or renew, then retry. Reinstallation is unnecessary. |
 | Network/VPN problem | Restore connectivity and retry; a transport error must not be described as a license rejection. |
