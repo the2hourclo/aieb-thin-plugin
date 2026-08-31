@@ -21,7 +21,7 @@ Use the AIEB MCP tools available in this session. Tool prefixes vary by host, so
 
 Search lazy-loaded tools for one ending in `get_skill`. If it does not exist after a real tool search, the connector did not load.
 
-- **Cowork / Claude Desktop:** confirm AI Employee Builder v0.31.2+ is installed. Update the marketplace through **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then open **Customize → Plugins → AI Employee Builder → Update** if that button appears. Start a new session. To launch setup, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. After selection, Cowork may display the shorter `/setup-aieb` chip; that is expected. The natural-language route **set up AIEB** also works. When authorization is needed, open **Customize → Connectors → aieb** and reconnect. Disconnect first only if the host falsely leaves an expired authorization marked **Connected**.
+- **Cowork / Claude Desktop:** confirm AI Employee Builder v0.31.3+ is installed. Update the marketplace through **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then open **Customize → Plugins → AI Employee Builder → Update** if that button appears. Start a new session. To launch setup, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. After selection, Cowork may display the shorter `/setup-aieb` chip; that is expected. The natural-language route **set up AIEB** also works. When authorization is needed, open **Customize → Connectors → aieb** and reconnect. Disconnect first only if the host falsely leaves an expired authorization marked **Connected**.
 
 > **Cowork invocation rule — origin 2026-09-01:** A real Cowork test treated a bare typed `/setup-aieb` as an unknown skill, while the namespaced plugin skill launched correctly and then displayed the short chip. This namespace requirement applies to selecting the plugin skill in Cowork; Claude Code's installed slash command and the natural-language route remain valid.
 
@@ -92,4 +92,4 @@ When running in Codex:
 
 ---
 
-**Version:** 2.3 — Cowork setup now matches the verified marketplace-update, plugin-update, and expired-authorization UI routes (2026-09-01). Previous v2.2 clarified namespaced skill selection.
+**Version:** 2.4 — setup now requires the shell release whose update hook teaches both Claude Code and verified Cowork/Desktop paths (2026-09-01). Previous v2.3 aligned Cowork's update and reconnect menus.

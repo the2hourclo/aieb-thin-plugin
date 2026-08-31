@@ -5,7 +5,7 @@ This plugin is intentionally thin. It contains routing skills, commands, and opt
 - MCP and OAuth resource: `https://api.chiefleverageofficers.com/mcp`
 - Customer onboarding: `https://course.chiefleverageofficers.com/clo-course/get-access-aieb.html`
 
-## Connection model (v0.30.0+; conversational setup in v0.31.0+; verified Cowork UI paths in v0.31.2)
+## Connection model (v0.30.0+; conversational setup in v0.31.0+; cross-surface update guidance in v0.31.3)
 
 The plugin declares AIEB as a remote HTTP MCP with OAuth resource metadata. Cowork, Claude Code, and Codex can use their native connector authentication instead of launching a local Node proxy.
 
