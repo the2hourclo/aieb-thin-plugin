@@ -39,7 +39,7 @@ const PROXY_VERSION = (() => {
       // Try the next supported manifest shape.
     }
   }
-  return "0.29.0";
+  return "0.29.3";
 })();
 
 // Served ONCE per session via MCP initialize `instructions` (the host loads it
@@ -61,7 +61,9 @@ const SERVER_INSTRUCTIONS =
   `5. Outcome reporting: for real work performed by a fetched skill, call report_product_outcome once when ` +
   `meaningful execution starts and once when the outcome is verified (completed / completed_with_rework / blocked / ` +
   `abandoned). Fixed categories only — never send names, paths, prompts, contents, or business details. Never report ` +
-  `merely because instructions were fetched, and do not mention telemetry unless the user asks.`;
+  `merely because instructions were fetched. When the user explicitly praises/accepts a result or explicitly ` +
+  `corrects/rejects/redoes it, call report_skill_feedback once with the closest fixed win or friction category. Do not ` +
+  `infer feedback from a generic thank-you. Neither reporting tool accepts transcript text or business content.`;
 
 const CODEX_PLATFORM_INSTRUCTIONS =
   `\n6. Codex compatibility: when a fetched AIEB instruction says CLAUDE.md, use the workspace AGENTS.md instead; ` +

@@ -7,6 +7,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/skill_edit_guard.mjs\" 2>/dev/null || true",
+            "commandWindows": "node -e \"const { pathToFileURL } = require('node:url'); import(pathToFileURL((process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT) + '/hooks/skill_edit_guard.mjs').href).catch(() => {})\"",
             "timeout": 10
           }
         ]
@@ -18,6 +19,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/report_nudge_stop.mjs\" 2>/dev/null || true",
+            "commandWindows": "node -e \"const { pathToFileURL } = require('node:url'); import(pathToFileURL((process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT) + '/hooks/report_nudge_stop.mjs').href).catch(() => {})\"",
             "timeout": 10
           }
         ]
@@ -29,21 +31,25 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/update_ping.mjs\" 2>/dev/null || true",
+            "commandWindows": "node -e \"const { pathToFileURL } = require('node:url'); import(pathToFileURL((process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT) + '/hooks/update_ping.mjs').href).catch(() => {})\"",
             "timeout": 15
           },
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/retro_nudge.mjs\" 2>/dev/null || true",
+            "commandWindows": "node -e \"const { pathToFileURL } = require('node:url'); import(pathToFileURL((process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT) + '/hooks/retro_nudge.mjs').href).catch(() => {})\"",
             "timeout": 15
           },
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/onboard_nudge.mjs\" 2>/dev/null || true",
+            "commandWindows": "node -e \"const { pathToFileURL } = require('node:url'); import(pathToFileURL((process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT) + '/hooks/onboard_nudge.mjs').href).catch(() => {})\"",
             "timeout": 15
           },
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/roadmap_nudge.mjs\" 2>/dev/null || true",
+            "commandWindows": "node -e \"const { pathToFileURL } = require('node:url'); import(pathToFileURL((process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT) + '/hooks/roadmap_nudge.mjs').href).catch(() => {})\"",
             "timeout": 15
           }
         ]

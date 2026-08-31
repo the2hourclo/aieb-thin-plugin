@@ -1,53 +1,58 @@
 #!/usr/bin/env node
-// skill_edit_guard.mjs — PreToolUse guard: direct edits to managed skill files
-// get an explicit confirm instead of sliding through silently.
+// PreToolUse guard for managed plugin skill copies.
 //
-// WHY: the live-reproduced buyer failure (2026-07-10 probe): asked to "add a
-// rule to my write skill", the model reached for Edit on the stub SKILL.md
-// instead of routing to meta-create-skill. Description text alone doesn't stop
-// that instinct; this hook is the enforcement half. Decision is "ask", not
-// "deny": meta-create-skill's own legitimate apply step edits skill files too,
-// and the buyer stays in control with a one-click approve.
-//
-// Scope: files under any `.claude/skills/` tree (workspace or user) and any
-// plugin `skills/` tree. Everything else passes through untouched.
+// Claude reports Edit/Write with tool_input.file_path. Codex may match this
+// hook through the Edit|Write aliases but reports canonical tool_name
+// "apply_patch" with the patch in tool_input.command. A managed cache edit must
+// fail closed on both hosts; user-authored workspace skills remain editable.
+
+const MANAGED_PLUGIN_SKILL = /(?:^|\/)(?:\.claude|\.codex)\/plugins\/.*\/skills\//i;
+
+function normalizePath(value) {
+  return String(value || "").trim().replace(/^['"]|['"]$/g, "").replace(/\\/g, "/");
+}
+
+function pathsFromPatch(command) {
+  const paths = [];
+  const headers = /^\*\*\*\s+(?:Add|Update|Delete) File:\s*(.+?)\s*$/gim;
+  const moves = /^\*\*\*\s+Move to:\s*(.+?)\s*$/gim;
+  for (const pattern of [headers, moves]) {
+    for (const match of String(command || "").matchAll(pattern)) paths.push(normalizePath(match[1]));
+  }
+  return paths;
+}
+
+function targetPaths(payload) {
+  const tool = String(payload?.tool_name || "");
+  if (tool === "Edit" || tool === "Write") return [normalizePath(payload?.tool_input?.file_path)];
+  if (tool === "apply_patch") return pathsFromPatch(payload?.tool_input?.command);
+  return [];
+}
+
+function denyDecision() {
+  return {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason:
+        "Direct edits to managed plugin skills are blocked because an update replaces them. " +
+        "For a durable personal rule, create an override in digital-assets/overrides/<skill>.md " +
+        "through the plugin's override procedure. If the skill misfired, run the retrospective skill. " +
+        "Plugin maintainers should edit the source repository, test it, and publish through the release workflow."
+    }
+  };
+}
 
 let raw = "";
-process.stdin.on("data", (d) => (raw += d));
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => (raw += chunk));
 process.stdin.on("end", () => {
-  let decision = null;
   try {
     const payload = JSON.parse(raw || "{}");
-    const tool = payload.tool_name || "";
-    if (tool === "Edit" || tool === "Write") {
-      const p = String(payload.tool_input?.file_path || "").replace(/\\/g, "/");
-      // ONLY skills we ship. `.claude/skills/` in the buyer's OWN workspace is
-      // where their first skill gets written at checkpoint 3 — guarding it told
-      // a buyer that the skill they were building belongs to someone else and
-      // would be overwritten, at the exact moment the journey asks them to
-      // build it (2026-07-26 audit). Plugin-installed skills are the managed
-      // ones; a file the buyer authored is theirs.
-      const managed = /\/(?:\.claude|\.codex)\/plugins\/.*\/skills\//i.test(p);
-      if (managed) {
-        decision = {
-          hookSpecificOutput: {
-            hookEventName: "PreToolUse",
-            permissionDecision: "ask",
-            permissionDecisionReason:
-              "This file belongs to a managed plugin skill — plugin updates overwrite direct edits. " +
-              "For AI Employee Builder skills the durable door is a personal override: ask for a " +
-              "personal rule so the <skill> skill does it your way, and a short override gets drafted " +
-              "into digital-assets/overrides/<skill>.md (your rule wins over the default and survives " +
-              "every update; see this plugin's self-improve/write-override-procedure.md). If the skill " +
-              "MISFIRED, run the retrospective skill instead. Approve this edit only if you are " +
-              "deliberately hand-editing a managed copy and accept that the next update replaces it."
-          }
-        };
-      }
+    if (targetPaths(payload).some((filePath) => MANAGED_PLUGIN_SKILL.test(filePath))) {
+      process.stdout.write(JSON.stringify(denyDecision()));
     }
   } catch {
-    // Malformed input: never block work because the guard itself hiccuped.
+    // Invalid hook input is not evidence that a managed path is being edited.
   }
-  if (decision) process.stdout.write(JSON.stringify(decision));
-  process.exit(0);
 });

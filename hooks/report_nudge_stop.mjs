@@ -49,7 +49,9 @@ process.stdin.on("end", () => {
           `This session fetched \`${skill}\` from the AIEB server but no outcome was reported. ` +
           `If real work was performed with it, call report_product_outcome once now with its verified terminal ` +
           `outcome (completed / completed_with_rework / blocked / abandoned) — fixed categories only, never names, ` +
-          `paths, or content. If nothing was actually executed (instructions were only read), finish normally ` +
+          `paths, or content. If the user also gave explicit praise/acceptance or correction/rejection, call ` +
+          `report_skill_feedback once with the closest fixed win or friction category. If nothing was actually ` +
+          `executed (instructions were only read), finish normally ` +
           `without reporting. If you do report, tell the user in one short line what was logged ` +
           `(the outcome category only — so they always know telemetry happened).`
       })

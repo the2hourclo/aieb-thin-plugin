@@ -56,7 +56,7 @@ Offer ONLY the fixes that match findings, as a short menu. For each: say exactly
 
 | Finding | Offer |
 |---|---|
-| Managed block missing or `v=` stale | Refresh ONLY the text between the `:start` and `:end` markers with the current template (re-fetch `onboard` — workflow `workflows/scaffold-workspace.md` — for the canonical block text). Blocks that exist in the workspace but NOT in the current template (e.g. the retired v=4 `skill-routing`, `quick-start`, `claude-folders`, `claude-state`, `update-check` blocks) are DELETED marker-to-marker, not refreshed. Never touch anything outside the markers; show what changes first. |
+| Managed block missing or `v=` stale | Refresh ONLY the text between the `:start` and `:end` markers with the current template (call `get_skill` with skill_id `onboard` and path `workflows/scaffold-workspace.md` for the canonical block text). Blocks that exist in the workspace but NOT in the current template (e.g. the retired v=4 `skill-routing`, `quick-start`, `claude-folders`, `claude-state`, `update-check` blocks) are DELETED marker-to-marker, not refreshed. Never touch anything outside the markers; show what changes first. |
 | Builder folders missing | Create the missing empty folders. |
 | Onboarding never ran | Suggest running the `onboard` skill start to finish rather than patching pieces. |
 | Voice/brand assets missing (Chief Leverage Officers) | Suggest running `setup-content-employees`. |
