@@ -159,7 +159,8 @@ function templateVersion(remote) {
 
 const UPDATE_CMDS = IS_CODEX
   ? `codex plugin add ${PLUGIN_NAME}@${MARKETPLACE}  →  start a fresh Codex thread  →  say "set up AIEB"`
-  : `/plugin install ${PLUGIN_NAME}@${MARKETPLACE}  →  /reload-plugins  →  /setup-aieb`;
+  : `/plugin install ${PLUGIN_NAME}@${MARKETPLACE}  →  /reload-plugins  →  say "set up AIEB" ` +
+    `(Cowork: select /ai-employee-builder:setup-aieb; the selected chip may show /setup-aieb)`;
 
 const FIRM =
   `[${PLUGIN_NAME} hook] The AI Employee Builder plugin shell installed here is v{have}, ` +

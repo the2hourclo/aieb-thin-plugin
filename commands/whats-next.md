@@ -20,7 +20,7 @@ Interpret these keys:
 
 ## Step 2 — Branch on where they are
 
-**No state file (fresh workspace).** They haven't onboarded on this machine. Don't invent progress. If AI Employee Builder is connected, say one line and offer to set up: *"Nothing saved here yet — want me to set up your workspace and install your Business OS? About 10 minutes."* then run `/setup-aieb` (or fetch the `onboard` skill if already connected). If they only want the free map, tell them to say **map my business**.
+**No state file (fresh workspace).** They haven't onboarded on this machine. Don't invent progress. If AI Employee Builder is connected, say one line and offer to set up: *"Nothing saved here yet — want me to set up your workspace and install your Business OS? About 10 minutes."* then invoke setup (in Cowork, select `/ai-employee-builder:setup-aieb`; the selected chip may show `/setup-aieb`) or fetch the `onboard` skill if already connected. The natural-language route **set up AIEB** also works. If they only want the free map, tell them to say **map my business**.
 
 **Onboarding not complete** (`onboarding.completed_at` absent, file present). Resume onboarding from its `current_step` — do not restart it from the top.
 

@@ -21,7 +21,9 @@ Use the AIEB MCP tools available in this session. Tool prefixes vary by host, so
 
 Search lazy-loaded tools for one ending in `get_skill`. If it does not exist after a real tool search, the connector did not load.
 
-- **Cowork / Claude Desktop:** confirm AI Employee Builder v0.30.0+ is installed under Customize → Personal plugins. Refresh the `the2hourclo/aieb-thin-plugin` marketplace, update the plugin, start a new session, then open the AIEB connector control and choose **Connect**.
+- **Cowork / Claude Desktop:** confirm AI Employee Builder v0.31.1+ is installed under Customize → Personal plugins. Refresh the `the2hourclo/aieb-thin-plugin` marketplace, update the plugin, and start a new session. To launch setup, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. After selection, Cowork may display the shorter `/setup-aieb` chip; that is expected. The natural-language route **set up AIEB** also works. Then open the AIEB connector control and choose **Connect** when prompted.
+
+> **Cowork invocation rule — origin 2026-09-01:** A real Cowork test treated a bare typed `/setup-aieb` as an unknown skill, while the namespaced plugin skill launched correctly and then displayed the short chip. This namespace requirement applies to selecting the plugin skill in Cowork; Claude Code's installed slash command and the natural-language route remain valid.
 - **Claude Code:** refresh/install `ai-employee-builder@aieb-thin-plugin`, run `/reload-plugins`, then inspect `/mcp` and connect AIEB.
 - **Codex:** run the commands below, then start a fresh task:
 
@@ -88,4 +90,4 @@ When running in Codex:
 
 ---
 
-**Version:** 2.1 — remote OAuth first, then conversational member intake through the connected agent (2026-08-31). Previous v2 introduced remote OAuth and legacy-device migration.
+**Version:** 2.2 — Cowork setup now names the required namespaced skill selection and its shortened selected chip (2026-09-01). Previous v2.1 added conversational member intake after remote OAuth.

@@ -5,7 +5,7 @@ This plugin is intentionally thin. It contains routing skills, commands, and opt
 - MCP and OAuth resource: `https://api.chiefleverageofficers.com/mcp`
 - Customer onboarding: `https://course.chiefleverageofficers.com/clo-course/get-access-aieb.html`
 
-## Connection model (v0.30.0+; conversational setup in v0.31.0+)
+## Connection model (v0.30.0+; conversational setup in v0.31.0+; Cowork launch fix in v0.31.1)
 
 The plugin declares AIEB as a remote HTTP MCP with OAuth resource metadata. Cowork, Claude Code, and Codex can use their native connector authentication instead of launching a local Node proxy.
 
@@ -15,7 +15,7 @@ The plugin declares AIEB as a remote HTTP MCP with OAuth resource metadata. Cowo
 4. A returning buyer continues with an existing course session or the Google address attached to the purchase. The server first resolves the member and entitlement already stored in Neon, so it does not consume another Lemon Squeezy activation.
 5. If that member has only a legacy local-device activation, the server atomically converts that existing slot into the first remote connector grant. A genuinely additional connector may activate another permitted instance server-side.
 6. The host receives a short-lived access token plus a rotating refresh token. Only token hashes are stored.
-7. If the buyer has not completed the four member-intake answers, the connector remains authenticated while paid skill delivery pauses. `/setup-aieb` asks the questions in Cowork and calls `complete_aieb_onboarding`; it never sends the buyer through OAuth a second time.
+7. If the buyer has not completed the four member-intake answers, the connector remains authenticated while paid skill delivery pauses. In Cowork, the buyer types `/ai-employee-builder:setup-aieb`, selects that namespaced skill, then presses Enter or starts the task. The selected chip may display `/setup-aieb`. The setup skill asks the questions and calls `complete_aieb_onboarding`; it never sends the buyer through OAuth a second time. Saying **set up AIEB** is the natural-language alternative.
 
 A Lemon Squeezy license key remains a secure-page fallback. It is never requested in chat, placed in an MCP config file, or returned to the plugin.
 
@@ -41,7 +41,7 @@ No transcript, prompt, uploaded file, memory, license key, or customer business 
 /setup-aieb
 ```
 
-In Cowork/Desktop, update the AI Employee Builder Personal plugin, start a fresh session, open the AIEB connector control, and click **Connect** if prompted. The browser handles authentication; no local-runtime toggle or local Node installation is required.
+In Cowork/Desktop, update the AI Employee Builder Personal plugin to v0.31.1+, start a fresh session, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. Cowork may shorten the selected chip to `/setup-aieb`; that is expected. The buyer can instead say **set up AIEB**. Open the AIEB connector control and click **Connect** if prompted. The browser handles authentication; no local-runtime toggle or local Node installation is required.
 
 ## Connector declaration
 
@@ -71,9 +71,9 @@ Both `.mcp.json` and `mcp.json` declare the remote resource:
 
 | Symptom | Buyer-safe fix |
 |---|---|
-| Connector missing from the session | Update to v0.30.0+, reload/start a fresh session, then inspect the host's connector control. |
+| Connector missing from the session | Update to v0.31.1+, reload/start a fresh session, then inspect the host's connector control. In Cowork, select `/ai-employee-builder:setup-aieb`; a bare typed `/setup-aieb` may not resolve before selection. |
 | Host asks to authenticate | Click **Connect**, finish the secure browser flow, and retry the paid action. |
-| Connected, but member setup is incomplete | Stay in the same session. `/setup-aieb` asks four short questions and completes onboarding through the authenticated connector. Do not reconnect. |
+| Connected, but member setup is incomplete | Stay in the same session. In Cowork, select `/ai-employee-builder:setup-aieb` (the selected chip may shorten to `/setup-aieb`) or say **set up AIEB**. It asks four short questions and completes onboarding through the authenticated connector. Do not reconnect. |
 | Returning buyer is not recognized | Use the Google address attached to the purchase; use a Lemon Squeezy key only on the secure browser page if needed. |
 | Subscription cancelled or lapsed | Resume or renew, then retry. Reinstallation is unnecessary. |
 | Network/VPN problem | Restore connectivity and retry; a transport error must not be described as a license rejection. |
