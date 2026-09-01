@@ -1,6 +1,6 @@
 {
   "name": "ai-employee-builder",
-  "version": "0.31.3",
+  "version": "0.31.4",
   "description": "Public AI Employee Builder shell: auto-routing skills and a remote OAuth connector for the gated AIEB MCP server across Codex, Claude Code, and Cowork.",
   "author": {
     "name": "Rashid Khamis",

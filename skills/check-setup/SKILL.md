@@ -15,7 +15,7 @@ You are checking this person's AI Employee Builder setup and fixing only what th
 |---|---|
 | User asks for a full setup check or says the product is broken | Run Steps 1–4 in order: prove the connector and plan, inspect only the current surface's files, diagnose, then offer consent-gated repairs. |
 | User reports only a connector or license problem | Run Step 1 first. Continue to file checks only if the user also reports a workspace problem. |
-| Client cannot read the working folder | Run the live connector and plan probes, skip file checks, and say plainly what could not be verified. |
+| Client cannot read the working folder | Run the live connector and plan probes, then report the workspace as not attached, read-only, or unverified. Do not call workspace checks inapplicable. |
 | User asks about automated sequences or Kit, or Email OS is already configured | Include the optional Email OS row and hand its own checks to `email-os`; otherwise record `➖ optional — not configured`. |
 
 ### Surface contract — choose once before checking files
@@ -27,7 +27,7 @@ Identify the current client, then use one vocabulary consistently:
 | Claude Code / Cowork with folder access | `CLAUDE.md` | `.claude/skills/` | `.claude/agents/`, `.claude/commands/`, `.claude/hooks/` |
 | Codex | `AGENTS.md` | `.agents/skills/` | None — agents and automation are plugin capabilities; never create or flag missing Claude-only folders |
 
-`.claude-state/` keeps its historical name on every surface. It is shared AIEB product state, so Codex must read it unchanged. This portability rule was added after the 2026-08-31 served-catalog audit found that a healthy Codex workspace could be reported broken for lacking Claude-only folders. Carve-out: if a client cannot read the working folder, skip file checks instead of guessing its surface from filenames.
+`.claude-state/` keeps its historical name on every surface. It is shared AIEB product state, so Codex must read it unchanged. This portability rule was added after the 2026-08-31 served-catalog audit found that a healthy Codex workspace could be reported broken for lacking Claude-only folders. Carve-out: if a client cannot read the working folder, report the workspace as unverified instead of guessing its surface from filenames.
 
 ## Step 1 — Connector and plan (prove it with live calls — never assume)
 
@@ -44,7 +44,19 @@ This skill may have loaded from the local plugin, so reading it proves nothing a
 
 Report both in one or two sentences before moving on. If the probes pass here but the user says "nothing works", the broken thing is usually a different chat or device — ask which machine had the problem.
 
-## Step 2 — Workspace checks (use the surface contract)
+## Step 2 — Workspace boundary, then file checks (use the surface contract)
+
+Report **connector**, **paid entitlement**, and **workspace** as three independent rows. A healthy connector or plan never proves that the current chat has the member's persistent workspace. Before inspecting AIEB files, identify the current working root and determine whether it is readable and writable. Name the root in the report whenever one is exposed.
+
+On Cowork:
+
+- No persistent Project folder is exposed → `Workspace ❌ not attached`. Give the exact route **New chat → Project → Add folder** and stop local checks; do not say file checks do not apply.
+- The folder is readable but read-only → `Workspace ⚠️ read-only`. Name it and ask the member to attach it with write access; do not offer onboarding or local repairs there.
+- The member says their AIEB workspace is in another Project/folder → `Workspace ⚠️ wrong Project`. Tell them to open that existing Cowork Project with the original folder attached. Do not offer to rebuild its state here.
+- Read/write cannot be established → `Workspace ⚠️ unverified`. Explain which access is missing and stop local checks.
+- A persistent readable/writable Project folder is attached → `Workspace ✅ <root>` and continue below. Reading for diagnosis is safe; any repair still requires the Step 4 confirmation.
+
+> **Cowork workspace-status rule — origin 2026-09-01:** a live setup reported paid access as complete even though the session exposed only temporary scratch space. Workspace access is now a first-class diagnostic instead of a skipped/platform-inapplicable check. **Carve-out:** a connector-only question may end after Step 1, but the status card must label workspace `➖ not checked`, never imply it is ready.
 
 ### In Claude Code or Codex
 
@@ -59,7 +71,7 @@ Check these, in order, and keep a simple found/missing list:
 
 ### In Cowork / Claude Desktop
 
-If the platform lets you read the workspace's files, run the same checks on the workspace map file. If it doesn't expose folders or files, skip the file checks gracefully — say "file checks don't apply on this platform" — and report only Step 1's connector + plan facts. Do not guess at files you cannot see.
+After the Cowork boundary above passes, run the same checks on the attached workspace's `CLAUDE.md` and `.claude-state/`. If the client exposes neither a persistent root nor readable files, retain the explicit `not attached` or `unverified` workspace finding and stop local checks. Do not guess at files and do not downgrade the finding to "not applicable."
 
 **Routing check (Cowork only):** ask whether skill suggestions have felt off — Claude answering generically instead of using the AI Employees. If so, the plugin is likely missing: walk them through **Customize → Personal plugins → + → Add marketplace →** `the2hourclo/aieb-thin-plugin` **→ Sync → install AI Employee Builder**. Reassure them about the red "trust this plugin" notice (standard for every non-Anthropic plugin). If Personal plugins isn't in their Customize screen, tell them to update the Claude desktop app first — it ships in current versions.
 
@@ -79,7 +91,7 @@ Offer ONLY the fixes that match findings, as a short menu. For each: say exactly
 |---|---|
 | Managed block missing or `v=` stale | Refresh ONLY the text between the `:start` and `:end` markers in the surface's workspace-instructions file with the current template (re-fetch `onboard` and use its `scaffold-workspace` workflow for the canonical block text). On Codex, apply its platform mapping and update `AGENTS.md`, never `CLAUDE.md`. Blocks that exist in the workspace but NOT in the current template (e.g. the retired v=4 `skill-routing`, `quick-start`, `claude-folders`, `claude-state`, `update-check` blocks) are DELETED marker-to-marker, not refreshed. Never touch anything outside the markers; show what changes first. |
 | Surface-appropriate builder folders missing | Create only the missing folders named by the surface contract. Never create `.claude/agents/`, `.claude/commands/`, or `.claude/hooks/` on Codex. |
-| Onboarding never ran | Suggest running the `onboard` skill start to finish rather than patching pieces. |
+| Onboarding never ran | Suggest running the `onboard` skill start to finish rather than patching pieces. On Cowork, offer this only inside the attached readable/writable Project folder. If that root is non-empty, name it and get explicit confirmation that it is the intended AIEB workspace before fetching `onboard`; an empty attached root may proceed directly. |
 | Voice profile, approved sample, or brand asset missing (Chief Leverage Officers) | Suggest running `setup-content-employees`. A sample folder without `voice-profile.md` is not a calibrated setup. |
 | Email OS requested or already configured | Hand off to `email-os` for its own preflight. If it is not installed/configured, show `➖ optional — not configured`; offer setup only when the user asked for automated sequences or Kit. |
 | Account or connection problems on ANY device/chat | Update the plugin, then reconnect through the host's native AIEB connector control. In Cowork/Desktop, use **Customize → Connectors → aieb**; disconnect first only if an expired authorization is falsely marked **Connected**. The first-party page checks the purchase browser, existing course account, and verified Google email before offering the Lemon Squeezy key fallback. Existing Neon-linked members should reconnect without typing a key or consuming another activation. **The key never goes into chat.** A working legacy v0.29.x device connection may stay in place during migration; do not delete it manually. |
@@ -102,8 +114,9 @@ End with a compact card — one line per check, ✅ / ⚠️ / ❌ / ➖ (not ap
 ```
 AI Employee Builder — Setup Check
 ──────────────────────────────────
-Connector + license   ✅ working (this session)
-Plan                  ✅ Chief Leverage Officers
+Connector             ✅ AIEB server working (this session)
+Paid entitlement      ✅ Chief Leverage Officers
+Workspace             ✅ C:\Businesses\Acme (Cowork Project folder, read/write)
 Authored-skill home   ✅ .agents/skills/ present (Codex)
 Onboarding state      ✅ completed
 Workspace map         ⚠️ AGENTS.md v=1 (current v=2) — refresh offered, declined
@@ -118,4 +131,4 @@ Then one closing sentence: what (if anything) they should do next, in plain word
 
 ---
 
-**Version:** 2.1 — Cowork diagnostics now use the verified marketplace, installed-plugin, and connector UI routes (2026-09-01). Previous v2 introduced remote OAuth connector diagnostics.
+**Version:** 2.2 — setup checks now distinguish connector, entitlement, and durable Cowork Project-folder readiness (2026-09-01). Previous v2.1 added verified Cowork update and connector routes.

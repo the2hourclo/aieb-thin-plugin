@@ -21,7 +21,7 @@ Use the AIEB MCP tools available in this session. Tool prefixes vary by host, so
 
 Search lazy-loaded tools for one ending in `get_skill`. If it does not exist after a real tool search, the connector did not load.
 
-- **Cowork / Claude Desktop:** confirm AI Employee Builder v0.31.3+ is installed. Update the marketplace through **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then open **Customize → Plugins → AI Employee Builder → Update** if that button appears. Start a new session. To launch setup, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. After selection, Cowork may display the shorter `/setup-aieb` chip; that is expected. The natural-language route **set up AIEB** also works. When authorization is needed, open **Customize → Connectors → aieb** and reconnect. Disconnect first only if the host falsely leaves an expired authorization marked **Connected**.
+- **Cowork / Claude Desktop:** confirm AI Employee Builder v0.31.4+ is installed. Update the marketplace through **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then open **Customize → Plugins → AI Employee Builder → Update** if that button appears. Start a new session. To launch setup, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. After selection, Cowork may display the shorter `/setup-aieb` chip; that is expected. The natural-language route **set up AIEB** also works. When authorization is needed, open **Customize → Connectors → aieb** and reconnect. Disconnect first only if the host falsely leaves an expired authorization marked **Connected**.
 
 > **Cowork invocation rule — origin 2026-09-01:** A real Cowork test treated a bare typed `/setup-aieb` as an unknown skill, while the namespaced plugin skill launched correctly and then displayed the short chip. This namespace requirement applies to selecting the plugin skill in Cowork; Claude Code's installed slash command and the natural-language route remain valid.
 
@@ -69,11 +69,27 @@ When all four answers are clear, call `complete_aieb_onboarding` with `business_
 
 After the paid fetch succeeds, handle any shell-version notice it returns. Explain that skills, workspace state, and the existing account link stay intact across a plugin update. If there is no notice, keep the confirmation to one sentence. Paid skill bodies update server-side and do not require a reinstall.
 
-## 4. Continue the workspace instead of restarting it
+## 4. Verify the Cowork Project and folder boundary
+
+Run this preflight on **Cowork** after authentication and entitlement succeed but **before** reading either state file or fetching `onboard`. Connection, paid entitlement, and workspace readiness are separate facts. Report them separately and never say **all set** while the workspace row is unresolved.
+
+Determine from the current session whether this chat is inside a Cowork Project with one persistent working folder attached. Identify the folder by its displayed name or resolved root, and verify that the session can read and write it. Use host/project context and file metadata; do not create a probe file just to test access.
+
+- **No Project folder is attached, or no persistent root is exposed:** report `Connector ✅`, `Paid entitlement ✅`, and `Workspace ❌ not attached`. Tell the user exactly: **Open New chat → Project → Add folder, attach the folder you want AIEB to use, then run set up AIEB again.** Stop. Do not inspect `.claude-state`, fetch `onboard`, scaffold, or write anything in temporary scratch space.
+- **The root is readable but read-only:** report `Workspace ⚠️ read-only`, name the root, and stop before onboarding. Ask them to attach that folder with write access. If it is an existing AIEB workspace, tell them to open its existing Cowork Project and attach the same folder; never rebuild it in a new folder.
+- **The user says their AIEB workspace already exists in another Project or folder:** keep connector and entitlement marked healthy, direct them to open that existing Project with its original folder attached, and stop. Do not create replacement state or re-onboard here.
+- **A readable, writable root is attached and non-empty:** name the root and ask: **Is `<root>` the Project folder you want AIEB to use?** Stop until they explicitly confirm. Do not read state, fetch onboarding, or modify files before that confirmation.
+- **A readable, writable root is attached and verified empty:** continue without an extra confirmation; attaching an empty folder to this Project is sufficient intent for first-run setup.
+
+If the host cannot establish read/write access, mark the workspace **unverified**, not ready. Do not describe workspace checks as inapplicable on Cowork.
+
+> **Cowork workspace-boundary rule — origin 2026-09-01:** a real paid Cowork setup continued inside temporary scratch space and told the member only to “pick a folder,” so the connector worked while no durable workspace was created. The preflight now blocks onboarding until Cowork exposes the intended persistent Project folder. **Carve-out:** Claude Code and Codex already start with an explicit working root; use their normal workspace safeguards rather than sending them through Cowork's **New chat → Project → Add folder** UI.
+
+## 5. Continue the workspace instead of restarting it
 
 Read `.claude-state/progress-state.yaml` first. Despite its historical name, `.claude-state/` is shared AIEB product state across supported clients. Treat `.claude-state/onboarding-progress.json` only as a fallback when the YAML is absent.
 
-- **Neither state file exists:** fetch `get_skill(skill_id: "onboard", path: "SKILL.md")` and follow it end to end.
+- **Neither state file exists:** fetch `get_skill(skill_id: "onboard", path: "SKILL.md")` and follow it end to end. On Cowork, reach this branch only after Step 4 verified an attached empty readable/writable root, or after the user explicitly confirmed the named non-empty root. Pass that boundary decision into the handoff so onboarding cannot treat scratch space or an unconfirmed repository as its workspace.
 - **`onboarding.completed_at` exists:** do not re-onboard. Continue the user's task; offer `check-setup` only for a missing or stale managed workspace block.
 - **The current journey is in progress:** fetch `onboard` and resume from the recorded `current_step`.
 - **Only the legacy JSON exists:** inspect workspace evidence, credit completed work, and enter the current onboarding workflow at the first unfinished checkpoint.
@@ -92,4 +108,4 @@ When running in Codex:
 
 ---
 
-**Version:** 2.4 — setup now requires the shell release whose update hook teaches both Claude Code and verified Cowork/Desktop paths (2026-09-01). Previous v2.3 aligned Cowork's update and reconnect menus.
+**Version:** 2.5 — setup now separates connector, entitlement, and durable Cowork workspace readiness before onboarding (2026-09-01). Previous v2.4 required the cross-surface update shell.
