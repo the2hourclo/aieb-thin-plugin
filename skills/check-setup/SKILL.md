@@ -116,7 +116,7 @@ AI Employee Builder — Setup Check
 ──────────────────────────────────
 Connector             ✅ AIEB server working (this session)
 Paid entitlement      ✅ Chief Leverage Officers
-Workspace             ✅ C:\Businesses\Acme (Cowork Project folder, read/write)
+Workspace             ✅ <attached-workspace-root> (Cowork Project folder, read/write)
 Authored-skill home   ✅ .agents/skills/ present (Codex)
 Onboarding state      ✅ completed
 Workspace map         ⚠️ AGENTS.md v=1 (current v=2) — refresh offered, declined
