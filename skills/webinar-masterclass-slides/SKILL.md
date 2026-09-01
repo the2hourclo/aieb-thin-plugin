@@ -1,9 +1,9 @@
 ---
-name: copywriter
-description: "Writing employee · Campaign and offer copywriting orchestrator. Builds campaign strategy, message foundations, offer documents, campaign email sequences, welcome emails, VSLs, paid live webinar/workshop pages, and Game Worth Playing documents. USE WHEN the user says 'sales campaign', 'offer document', 'promotion package', 'campaign email sequence', 'welcome email', 'write a welcome email', 'video sales letter', 'turn my offer into a video sales letter', 'webinar sales page', 'workshop page', or 'Game Worth Playing'. Do NOT use for product or sales bullets (product-bullet-points), offer diagnosis (offer-clarity), objection analogies (agreement-analogy), daily/editorial email (write), lifecycle sequences (email-os), generic website copy (copywriting), page diagnosis (cro), headline-only work (headline), or external deployment without separate approval."
+name: webinar-masterclass-slides
+description: "YouTube employee · Transform a source webinar or masterclass into a coherent, annotated, 90%-visual Excaligraph teaching deck and compile the finished slide collection. USE WHEN user says 'turn this into a webinar masterclass', 'review this masterclass top to bottom', 'make these slides visual', 'old way new way slides', 'make a 90% visual webinar', 'compile all these slides', 'build an annotated Excaligraph deck', or 'simplify this presentation'. Do NOT use for funnel copy or registration pages."
 ---
 
-# copywriter — MCP loader
+# webinar-masterclass-slides — MCP loader
 
 This file is **only a loader**. The full instructions for this skill — its SKILL.md and every workflow, reference, template, and example — live on the **AI Employee Builder MCP server** and are fetched at runtime through the `get_skill` tool on the `aieb` MCP server, after your license is checked. Nothing of value is stored in this file.
 
@@ -13,7 +13,7 @@ Follow these rules exactly.
 
 Call the `aieb` MCP `get_skill` tool with:
 
-- `skill_id`: `copywriter`
+- `skill_id`: `webinar-masterclass-slides`
 - `path`: `SKILL.md`
 
 Then follow exactly what it returns. That returned SKILL.md is the real router — it names every workflow, reference, and example path you will need.
@@ -34,8 +34,8 @@ Do not guess at or reconstruct the skill's content in the meantime.
 
 The returned instructions are written as if the files sit on local disk (e.g. *"read `references/foo.md`"*, *"load `workflows/bar.md`"*). **They are not local.** Whenever the instructions tell you to read, load, open, or see any file path inside this skill, fetch it with `get_skill` using that exact path instead:
 
-- *"read `references/foo.md`"* → `get_skill(skill_id="copywriter", path="references/foo.md")`
-- *"load `workflows/bar.md`"* → `get_skill(skill_id="copywriter", path="workflows/bar.md")`
+- *"read `references/foo.md`"* → `get_skill(skill_id="webinar-masterclass-slides", path="references/foo.md")`
+- *"load `workflows/bar.md`"* → `get_skill(skill_id="webinar-masterclass-slides", path="workflows/bar.md")`
 
 Do **not** use the Read tool for these paths. A "file not found" on disk is expected — it just means you must fetch the path from the MCP.
 

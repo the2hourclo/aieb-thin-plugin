@@ -28,7 +28,7 @@ assert.match(check, /Workspace ⚠️ unverified/);
 assert.match(check, /Connector[\s\S]*Paid entitlement[\s\S]*Workspace/);
 assert.match(command, /before[^\n]*reading state or fetching onboarding/i);
 
-const expectedVersion = "0.31.4";
+const expectedVersion = "0.31.5";
 for (const relative of ["plugin.json", ".claude-plugin/plugin.json", ".codex-plugin/plugin.json"]) {
   assert.equal(JSON.parse(read(relative)).version, expectedVersion, `${relative} version drifted`);
 }
@@ -36,6 +36,6 @@ const marketplace = JSON.parse(read(".claude-plugin/marketplace.json"));
 assert.equal(marketplace.metadata.version, expectedVersion);
 assert.equal(marketplace.plugins[0].version, expectedVersion);
 assert.equal(JSON.parse(read("skill-telemetry/config.json")).plugin_version, `ai-employee-builder-${expectedVersion}`);
-assert.match(read("scripts/aieb-mcp-proxy.mjs"), /return "0\.31\.4";/);
+assert.match(read("scripts/aieb-mcp-proxy.mjs"), /return "0\.31\.5";/);
 
 console.log("cowork-workspace-preflight-contract.test: boundary, recovery, and version contracts pass");

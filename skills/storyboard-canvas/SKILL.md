@@ -1,7 +1,6 @@
 ---
 name: storyboard-canvas
-description: "YouTube employee · Build or read an Excalidraw storyboard made from finished slide PNGs. Auto-arrange slides into an infinite-canvas board (spine on top, narrative acts by column, beats by row), or reconstruct an existing .excalidraw as an overview PNG plus arrangement summary. USE WHEN user says 'build a storyboard canvas', 'arrange the deck on a canvas', 'put slides on an Excalidraw board', 'auto-arrange these slides', 'read this canvas', or 'show me the canvas arrangement'. Do NOT use to author diagrams (→ excali-graphic), render slides (use an installed deck renderer; without one, request finished PNGs), or decide the narrative arc."
-allowed-tools: Bash Read Write Edit
+description: "YouTube employee · Build or inspect an editable Excalidraw storyboard made from finished slide images. Arranges PNG slides as spine, narrative-act columns, and teaching-beat rows; preserves each slide's real aspect ratio; creates a bird's-eye preview; or reads an existing image-based canvas into an overview and structured summary. USE WHEN the user says 'build a storyboard canvas', 'arrange these slides on a board', 'put this deck in Excalidraw', 'read this canvas', 'show the canvas arrangement', or needs an editable whiteboard deck. Do NOT use to decide visual coverage, render slides, author diagram art, or create a flat presentation PDF."
 user-invocable: false
 ---
 

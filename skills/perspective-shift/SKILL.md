@@ -1,6 +1,6 @@
 ---
 name: perspective-shift
-description: "Writing employee · Find and charge the ONE perspective shift inside a transcript, article, newsletter, raw idea, or brand-positioning source. Produces scoped shift cards with old/new belief, content angle, and dream/nightmare stakes for any short-form format. USE WHEN user says 'find the perspective shift', 'what's the shift here', 'extract the shifts', 'what's the angle', 'turn this source into short-form ideas', or hands over a source to repurpose for cold traffic. Do NOT use for a finished rendered piece (route to an installed destination producer; if none is available, return a format-neutral production brief), a hook with no shift work (→ write-hook), or a full long-form argument (→ writing-logic)."
+description: "Writing employee · Find and charge the ONE perspective shift inside a transcript, article, newsletter, raw idea, or brand-positioning document for any short-form format. Produces ranked shift cards, selects the standalone shift and content angle, and builds its dream/nightmare stakes ladder instead of returning a generic summary. USE WHEN user says 'find the perspective shift', 'what's the shift here', 'extract the shifts', 'what's the angle', 'turn this source into short-form ideas', 'what should this say', or supplies a source to repurpose for cold traffic. Do NOT use for a finished rendered piece (use its installed format owner), a hook with no shift work (write-hook), or a full long-form argument (writing-logic)."
 user-invocable: false
 ---
 

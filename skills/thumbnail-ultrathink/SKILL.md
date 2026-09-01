@@ -1,11 +1,6 @@
 ---
 name: thumbnail-ultrathink
-description: YouTube employee · First-principles thumbnail deconstruction for high-impact visual metaphors. Analyzes what makes thumbnails work, identifies universal visual stories, and designs stick-figure whiteboard concepts that pass the 2 AM scroll test. USE WHEN user says 'thumbnail ultrathink', 'analyze this thumbnail', 'design thumbnail concept', 'whiteboard visual', 'stick figure thumbnail', or needs a thumbnail that tells a story in 1 second.
-workflows:
-  deconstruct: "Analyze existing thumbnail - 'deconstruct this', 'why does this work'"
-  ideate: "Generate visual metaphor options - 'thumbnail ideas', 'visual concepts'"
-  design: "Design final concept - 'design thumbnail', 'create concept'"
-  full-process: "Complete pipeline - 'thumbnail ultrathink', 'full thumbnail process'"
+description: "YouTube employee · Assisted thumbnail judgment for choosing a high-impact visual story before rendering. Deconstructs relevant references, creates three materially different thumbnail visual stories, rejects objectively weak concepts, explains close calls, records the human's selection and reason, and produces a renderer-neutral concept brief. USE WHEN the user says 'analyze this thumbnail', 'why does this thumbnail work', 'thumbnail ideas', 'three thumbnail visual stories', 'choose a thumbnail concept', 'design a thumbnail concept', 'whiteboard thumbnail', 'visual metaphor', or needs a thumbnail that communicates in one second. Do NOT use for a complete YouTube production package (youtube-strategy), image rendering alone, or post-publish analytics."
 ---
 
 # thumbnail-ultrathink — MCP loader

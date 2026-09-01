@@ -1,6 +1,6 @@
 ---
 name: product-bullet-points
-description: "Writing employee · Turn verified product features, deliverables, curriculum, or bonuses into specific outcome-focused sales bullets. USE WHEN user says 'write product bullets', 'write bullet points', 'product benefits', 'create sales bullets', 'turn these features into benefits', 'what you get bullets', 'landing page bullets', 'lead magnet benefits', or 'workshop outcome bullets'. Do NOT use for a full campaign or offer document -> copywriter; full website pages -> `copywriting` if available, otherwise return a verified page-copy handoff brief; headline-only work -> `headline` if available, otherwise return evidence-bound headline directions; offer strategy or diagnosis -> offer-clarity."
+description: "Writing employee · Turn verified product features, deliverables, curriculum, course modules, or bonuses into specific outcome-focused sales bullets. USE WHEN user says 'write product bullets', 'write bullet points', 'product benefits', 'create sales bullets', 'turn these features into benefits', 'verified course modules', 'outcome-focused sales bullets', 'what you get bullets', 'landing page bullets', 'lead magnet benefits', or 'workshop outcome bullets'. Do NOT use for a full campaign or offer document -> copywriter; full website pages -> `copywriting` if available, otherwise return a verified page-copy handoff brief; headline-only work -> `headline` if available, otherwise return evidence-bound headline directions; offer strategy or diagnosis -> offer-clarity."
 user-invocable: false
 ---
 
