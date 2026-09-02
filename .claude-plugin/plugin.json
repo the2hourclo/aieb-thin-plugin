@@ -1,7 +1,7 @@
 {
   "name": "ai-employee-builder",
-  "version": "0.31.5",
-  "description": "Public AI Employee Builder shell: auto-routing skill stubs and a remote OAuth connector to the gated AIEB MCP server.",
+  "version": "0.32.0",
+  "description": "Public AI Employee Builder shell: auto-routing skill stubs, remote OAuth, and an opt-in private local improvement ledger.",
   "author": {
     "name": "Rashid Khamis",
     "email": "rashid@thepeakperformer.io",

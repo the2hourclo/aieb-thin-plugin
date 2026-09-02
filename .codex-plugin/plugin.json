@@ -1,7 +1,7 @@
 {
   "name": "ai-employee-builder",
-  "version": "0.31.5",
-  "description": "Public AI Employee Builder shell: auto-routing skills and a remote OAuth connector for the gated AIEB MCP server across Codex, Claude Code, and Cowork.",
+  "version": "0.32.0",
+  "description": "Public AI Employee Builder shell: auto-routing skills, remote OAuth, and an opt-in private local improvement ledger across Codex, Claude Code, and Cowork.",
   "author": {
     "name": "Rashid Khamis",
     "email": "rashid@thepeakperformer.io",
@@ -27,7 +27,8 @@
     "category": "Productivity",
     "capabilities": [
       "MCP",
-      "Setup"
+      "Setup",
+      "Local improvement ledger"
     ],
     "websiteURL": "https://chiefleverageofficer.substack.com/",
     "privacyPolicyURL": "https://chiefleverageofficer.substack.com/",

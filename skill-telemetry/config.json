@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "install_id": "",
-  "plugin_version": "ai-employee-builder-0.31.5",
+  "plugin_version": "ai-employee-builder-0.32.0",
   "form_action_url": "https://docs.google.com/forms/d/e/1FAIpQLSf65qvTLd5ABATyN0b5mRwCid5bDg2rFCuGLvWqBHUw-iCpdw/formResponse",
   "field_map": {
     "skill": "entry.1758595228",

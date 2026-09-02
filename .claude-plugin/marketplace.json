@@ -5,15 +5,15 @@
     "email": "rashid@thepeakperformer.io"
   },
   "metadata": {
-    "description": "Free AI Employee Builder shell that helps buyers connect to the hosted licensed AIEB MCP server.",
-    "version": "0.31.5"
+    "description": "Free AI Employee Builder shell with hosted licensed delivery and an opt-in private local improvement ledger.",
+    "version": "0.32.0"
   },
   "plugins": [
     {
       "name": "ai-employee-builder",
       "source": "./",
-      "description": "Public AI Employee Builder plugin shell. It contains setup guidance and a remote OAuth connector; paid skill instructions are served at runtime by the gated AIEB MCP server.",
-      "version": "0.31.5",
+      "description": "Public AI Employee Builder plugin shell with setup guidance, remote OAuth, and an opt-in private local improvement ledger; paid skill instructions are served at runtime by the gated AIEB MCP server.",
+      "version": "0.32.0",
       "author": {
         "name": "Rashid Khamis",
         "email": "rashid@thepeakperformer.io"

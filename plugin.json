@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ai-employee-builder",
-  "version": "0.31.5",
-  "description": "Connect AI Employee Builder to Codex, Claude Code, Cowork, and other Agent Plugins-compatible hosts.",
+  "version": "0.32.0",
+  "description": "Connect AI Employee Builder across supported hosts and optionally keep a private, local cross-runtime improvement ledger.",
   "author": {
     "name": "Rashid Khamis",
     "url": "https://chiefleverageofficer.substack.com/"

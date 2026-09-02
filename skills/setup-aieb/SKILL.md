@@ -1,6 +1,6 @@
 ---
 name: setup-aieb
-description: Securely connect, reconnect, update, or resume AI Employee Builder through its remote connector. USE WHEN the user says "set up AIEB", "connect AIEB", "reconnect AIEB", "activate AI Employee Builder", "finish AIEB setup", "update AIEB", or has just installed the plugin.
+description: Securely connect, reconnect, update, or resume AI Employee Builder through its remote connector, and configure its private local improvement ledger. USE WHEN the user says "set up AIEB", "connect AIEB", "reconnect AIEB", "activate AI Employee Builder", "finish AIEB setup", "update AIEB", "enable my local improvement ledger", "disable my local improvement ledger", or has just installed the plugin.
 ---
 
 # Set up AI Employee Builder
@@ -16,6 +16,8 @@ Use the AIEB MCP tools available in this session. Tool prefixes vary by host, so
 - Preserve the user's workspace, progress, and active task.
 
 > **Migration rule — origin 2026-08-31:** Cowork failed to launch the old local Node proxy on a customer Mac. Plugin v0.30.0 moved AIEB to remote HTTP OAuth. Existing device tokens remain valid only for older plugin versions during migration; do not tell a working legacy user to delete them manually.
+
+**Ledger-only request:** If the user asked only to enable or disable the local improvement ledger, do not rerun connector or member onboarding. Verify the current workspace root is durable and writable, then go directly to Step 6 and record the requested preference. On Cowork, the Project-folder boundary in Step 4 still applies because scratch space cannot hold a durable ledger.
 
 ## 0. Confirm the current shell is loaded
 
@@ -96,6 +98,32 @@ Read `.claude-state/progress-state.yaml` first. Despite its historical name, `.c
 
 If setup interrupted another task, return to that task and resume onboarding at the next natural pause. Connection is a doorway, not permission to hijack the work.
 
+## 6. Offer the private Continuous Improvement Ledger
+
+After the workspace is verified and normal setup is complete, check `.aieb/retrospective/preferences.json`.
+
+- **A prior decision exists:** preserve it. Do not ask again during routine setup.
+- **No decision exists:** ask once: **Would you like AIEB to keep a private local record of clear skill wins and misfires so retrospective can spot patterns over time? It stores pointers and fixed labels, not transcript text, and uploads nothing.**
+- **If yes:** create `.aieb/retrospective/preferences.json` with:
+
+  ```json
+  {
+    "schema_version": 1,
+    "enabled": true,
+    "capture_mode": "pointer-only",
+    "product_feedback": "separate-consent",
+    "decided_at": "<current ISO timestamp>"
+  }
+  ```
+
+- **If no:** write the same file with `enabled: false` so future setup runs respect the decision. The user can change it later by saying **enable my local improvement ledger** or **disable my local improvement ledger**.
+
+The plugin hook creates the runtime-local inbox only after opt-in: `.claude/.state/retrospective/inbox.jsonl` on Claude/Cowork, `.codex/.state/retrospective/inbox.jsonl` on Codex, and `.agents/.state/retrospective/inbox.jsonl` on another Agent Plugins-compatible host. All supported runtimes ingest into `.aieb/retrospective/ledger.jsonl` in the verified workspace.
+
+Before the first capture, the hook appends those four private-state directories to the workspace `.gitignore` without replacing existing rules. Tell the user this protection is part of enabling the ledger.
+
+Never store transcript text in these files, never treat local capture as consent to send product feedback, and never treat a ledger item as approval to edit a skill. **Origin 2026-09-02:** cross-runtime AIEB clients needed durable improvement history without merging Claude/Codex private transcript stores. **Carve-out:** immediate manual retrospectives work without enabling the ledger.
+
 ## Codex platform contract
 
 When running in Codex:
@@ -108,4 +136,4 @@ When running in Codex:
 
 ---
 
-**Version:** 2.5 — setup now separates connector, entitlement, and durable Cowork workspace readiness before onboarding (2026-09-01). Previous v2.4 required the cross-surface update shell.
+**Version:** 2.6 — setup now offers an opt-in, pointer-only Continuous Improvement Ledger after durable workspace verification (2026-09-02). Previous v2.5 separated connector, entitlement, and Cowork workspace readiness.

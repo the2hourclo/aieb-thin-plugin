@@ -27,7 +27,9 @@
  *   3. Scan USER messages only for explicit friction or win phrases. Tool
  *      output and assistant text never count as customer feedback.
  *   4. Emit additionalContext with the nudge.
- *   5. Mark the transcript as nudged so resumes don't repeat it.
+ *   5. When the workspace explicitly opted in, append pointer-only evidence to
+ *      the runtime inbox and ingest it into the shared local AIEB ledger.
+ *   6. Mark the transcript as nudged so resumes don't repeat it.
  *
  * All failure modes exit 0 silently — the nudge is a nice-to-have, never a
  * blocker.
@@ -35,6 +37,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { captureAndIngest, detectRuntime } from "./lib/retrospective-ledger.mjs";
 
 const PLUGIN_NAME = "ai-employee-builder";
 const IS_CODEX = Boolean(process.env.PLUGIN_ROOT);
@@ -111,8 +114,11 @@ const WIN_NUDGE =
   "send the author one richer anonymized win note; only after an explicit yes, follow " +
   "skill-telemetry/note-win-procedure.md. Do not treat a generic thank-you as a win. ";
 
-function buildNudge(signals) {
-  return COMMON_NUDGE + (signals.friction ? FRICTION_NUDGE : "") + (signals.win ? WIN_NUDGE : "");
+function buildNudge(signals, ledger = null) {
+  const ledgerContext = ledger?.ingest?.enabled
+    ? `LOCAL LEDGER: AIEB recorded pointer-only evidence locally and .aieb/retrospective/ledger.jsonl now has ${ledger.ingest.unreviewed || 0} unreviewed item(s). No transcript text was copied or uploaded. If the user chooses retrospective, start from that ledger, resolve source_ref against the runtime-local inbox, and keep the retrospective skill's explicit approval gate before any edit. `
+    : "";
+  return COMMON_NUDGE + (signals.friction ? FRICTION_NUDGE : "") + (signals.win ? WIN_NUDGE : "") + ledgerContext;
 }
 
 function findPreviousTranscript(current) {
@@ -155,7 +161,7 @@ function flattenMessageText(value) {
   return flattenMessageText(value.content);
 }
 
-function userTextFromTranscript(transcript) {
+function userMessagesFromTranscript(transcript) {
   let body;
   try {
     body = fs.readFileSync(transcript, "utf8");
@@ -178,14 +184,27 @@ function userTextFromTranscript(transcript) {
       messages.push(flattenMessageText(record.payload.message ?? record.payload.content));
     }
   }
-  return messages.filter(Boolean).join("\n");
+  return messages.filter(Boolean);
 }
 
-function feedbackSignals(transcript) {
-  const userText = userTextFromTranscript(transcript);
+function feedbackMatches(transcript) {
+  const messages = userMessagesFromTranscript(transcript);
+  const matches = [];
+  messages.forEach((userText, message_index) => {
+    if (FRICTION_PATTERNS.some((pattern) => pattern.test(userText))) {
+      matches.push({ signal: "friction", message_index });
+    }
+    if (WIN_PATTERNS.some((pattern) => pattern.test(userText))) {
+      matches.push({ signal: "win", message_index });
+    }
+  });
+  return matches;
+}
+
+function feedbackSignals(matches) {
   return {
-    friction: FRICTION_PATTERNS.some((pattern) => pattern.test(userText)),
-    win: WIN_PATTERNS.some((pattern) => pattern.test(userText))
+    friction: matches.some((match) => match.signal === "friction"),
+    win: matches.some((match) => match.signal === "win")
   };
 }
 
@@ -239,7 +258,8 @@ async function main() {
     return;
   }
 
-  const signals = feedbackSignals(prior);
+  const matches = feedbackMatches(prior);
+  const signals = feedbackSignals(matches);
   if (!signals.friction && !signals.win) {
     logEvent("no-feedback", { prior: path.basename(prior) });
     return;
@@ -252,15 +272,29 @@ async function main() {
     // best-effort — a missing marker only risks one extra nudge
   }
 
+  const ledger = captureAndIngest({
+    cwd,
+    runtime: detectRuntime(event),
+    sessionId: event.session_id,
+    transcriptPath: prior,
+    matches
+  });
+
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "SessionStart",
-        additionalContext: buildNudge(signals)
+        additionalContext: buildNudge(signals, ledger)
       }
     })
   );
-  logEvent("nudge-emitted", { prior: path.basename(prior), friction: signals.friction, win: signals.win });
+  logEvent("nudge-emitted", {
+    prior: path.basename(prior),
+    friction: signals.friction,
+    win: signals.win,
+    ledger_enabled: ledger.capture.enabled,
+    ledger_ingested: ledger.ingest.ingested || 0
+  });
 }
 
 main()

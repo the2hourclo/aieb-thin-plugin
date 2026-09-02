@@ -27,10 +27,18 @@ The legacy `scripts/aieb-mcp-proxy.mjs` remains in this release only for rollbac
 - `skills/`: generated routing loaders. Each loader fetches its real instructions through `get_skill`; generated loaders are not hand-edited.
 - `skills/setup-aieb/`: connection and migration guidance for the remote OAuth connector.
 - `commands/`: buyer-facing setup and workflow shortcuts.
-- `hooks/`: optional onboarding, roadmap, update, and retrospective nudges on hosts that support plugin hooks.
+- `hooks/`: optional onboarding, roadmap, update, and retrospective nudges on hosts that support plugin hooks, plus the opt-in local Continuous Improvement Ledger collector.
 - `skill-telemetry/`: explicit structured feedback only; no automatic transcript capture.
 
 No transcript, prompt, uploaded file, memory, license key, or customer business data is sent as product analytics. Business content stays in the buyer's workspace. Server events are limited to pseudonymous member/connector references, skill IDs, fixed outcome categories, versions, latency, and estimated token counts.
+
+### Optional local Continuous Improvement Ledger (v0.32.0+)
+
+After the buyer explicitly opts in during setup, the retrospective hook records pointer-only `win` and `friction` events in that runtime's workspace inbox and ingests them into `.aieb/retrospective/ledger.jsonl`. Claude/Cowork use `.claude/.state/retrospective/inbox.jsonl`; Codex uses `.codex/.state/retrospective/inbox.jsonl`; another Agent Plugins-compatible host uses `.agents/.state/retrospective/inbox.jsonl`.
+
+The collector does not copy transcript text, make network requests, edit skills, or authorize product feedback. Full transcript locations remain in the originating runtime inbox and never enter the shared ledger. Before first capture, the four private-state directories are added to the workspace `.gitignore` without replacing existing rules. Missing, declined, malformed, or unsafe preferences keep capture off; manual retrospective remains available. The workspace can opt out at any time by setting `.aieb/retrospective/preferences.json` to `enabled: false`.
+
+The bundled `scripts/retrospective-ledger.mjs` helper performs deterministic ingestion and moves only reviewed, dismissed, or applied events into `.aieb/retrospective/archive.jsonl`; archived event IDs remain part of deduplication so old runtime pointers cannot recreate resolved work.
 
 ## Install or update
 
