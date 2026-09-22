@@ -1,14 +1,13 @@
 ---
-name: storyboard-canvas
-description: "YouTube employee · Build or inspect an editable Excalidraw storyboard made from finished slide images. Arranges PNG slides as spine, narrative-act columns, and teaching-beat rows; preserves each slide's real aspect ratio; creates a bird's-eye preview; or reads an existing image-based canvas into an overview and structured summary. USE WHEN the user says 'build a storyboard canvas', 'arrange these slides on a board', 'put this deck in Excalidraw', 'read this canvas', 'show the canvas arrangement', or needs an editable whiteboard deck. Do NOT use to decide visual coverage, render slides, author diagram art, or create a flat presentation PDF."
-user-invocable: false
+name: pareto-focus
+description: "Builder employee · Create an evidence-labelled Pareto chart and 10/90 resource-focus brief for a business owner. USE WHEN user says 'make a Pareto chart', 'run an 80/20 analysis', 'run a 90/10 analysis', 'find my highest-leverage activities', 'which activities produced most revenue or qualified leads', 'what should I focus on', 'where should I use AI', or 'I have no data but need clarity'. Do NOT use for a full business map or process diagnosis (use `business-x-ray`) or a recurring KPI dashboard (use `metrics-tracking`)."
 ---
 
-# storyboard-canvas — MCP loader
+# pareto-focus — MCP loader
 
 Load the licensed instructions before doing this job:
 
-`get_skill(skill_id="storyboard-canvas", path="SKILL.md", section="contents")`
+`get_skill(skill_id="pareto-focus", path="SKILL.md", section="contents")`
 
 The tool prefix varies by host. Search available and lazy-loaded tools for any name ending in `get_skill`. If none exists, run the local `check-setup` skill and follow its repair. Do not improvise install commands or versions, and never ask for a license key in chat.
 
