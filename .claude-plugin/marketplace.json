@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Free AI Employee Builder shell with hosted licensed delivery and an opt-in private local improvement ledger.",
-    "version": "0.33.3"
+    "version": "0.33.4"
   },
   "plugins": [
     {
       "name": "ai-employee-builder",
       "source": "./",
       "description": "Public AI Employee Builder plugin shell with setup guidance, remote OAuth, and an opt-in private local improvement ledger; paid skill instructions are served at runtime by the gated AIEB MCP server.",
-      "version": "0.33.3",
+      "version": "0.33.4",
       "author": {
         "name": "Rashid Khamis",
         "email": "rashid@thepeakperformer.io"
