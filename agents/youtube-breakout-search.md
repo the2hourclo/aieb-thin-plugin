@@ -1,7 +1,7 @@
 ---
 name: youtube-breakout-search
 description: Searches YouTube for breakout videos with high view-to-subscriber ratios. USE WHEN spawned by the youtube-strategy breakout-research workflow to find viral videos outperforming their channel size.
-tools: *
+tools: "*"
 model: sonnet
 ---
 
