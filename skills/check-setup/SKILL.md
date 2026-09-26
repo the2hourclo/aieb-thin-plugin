@@ -1,6 +1,6 @@
 ---
 name: check-setup
-description: Setup employee · Verify and repair this AI Employee Builder setup — connector, license plan, surface-appropriate workspace folders, onboarding state, and the managed workspace-instructions block — then offer consent-gated fixes. USE WHEN user says 'check my setup', 'verify my setup', 'is my setup ok', 'is everything connected', 'something seems broken', 'my skills stopped working', 'fix my setup', 'setup health check', 'am I connected', 'why isn't this working', or another skill or message told them to run a setup check. Safe to run any time — it changes nothing without an explicit yes.
+description: Setup employee · Setup employee · Verify and repair this AI Employee Builder setup — connector, license plan, surface-appropriate workspace folders, onboarding state, and the managed workspace-instructions block — then offer consent-gated fixes. USE WHEN user says 'check my setup', 'verify my setup', 'is my setup ok', 'is everything connected', 'something seems broken', 'my skills stopped working', 'fix my setup', 'setup health check', 'am I connected', 'why isn't this working', or another skill or message told them to run a setup check. Safe to run any time — it changes nothing without an explicit yes.
 ---
 
 # Check Setup — Verify and Repair
@@ -39,8 +39,8 @@ This skill may have loaded from the local plugin, so reading it proves nothing a
    - No `get_skill` tool and no other AIEB tool exists after searching → the connector is missing in this session. Install or update AI Employee Builder, then start a fresh session/task. **Codex:** update `ai-employee-builder@aieb-thin-plugin` and start a fresh task. **Claude Code:** refresh the plugin, `/reload-plugins`, then inspect `/mcp`. **Cowork/Desktop:** run **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then **Customize → Plugins → AI Employee Builder → Update** if shown. Start a fresh session; when authorization is needed, use **Customize → Connectors → aieb**. No local Node runtime or device link is required.
    - The call itself errors → note the exact error for Step 3; a license/entitlement message means the connector is fine but the license needs attention (Step 4's key row).
 2. **Which plan are they on?** Call the `find_skill` tool with query "write a newsletter" and look at how the `write` skill comes back:
-   - `write` is marked 🔒 locked → they're on the **AI Employee Builder** plan (the builder skills).
-   - `write` is unlocked → they're on the **Chief Leverage Officers** plan (builders + the content-writing fleet).
+   - `write` is marked 🔒 locked → they're on a plan below the full membership, most often the **$1 trial week** of AI Employee Builders (the builder skills; the writing and YouTube employees unlock with the first $130 charge). A Business X-Ray or Masterclass pass also locks it.
+   - `write` is unlocked → they're on the full **AI Employee Builders** membership (every skill: the builders, the writing employees, and the YouTube employee).
    - Even builder skills come back locked → the connector reaches the server but no active license is attached on this device (Step 4's key row).
 
 Report both in one or two sentences before moving on. If the probes pass here but the user says "nothing works", the broken thing is usually a different chat or device — ask which machine had the problem.
@@ -67,7 +67,7 @@ Check these, in order, and keep a simple found/missing list:
 2. **Onboarding state:** `.claude-state/onboarding-progress.json` — exists means onboarding ran; missing means it never ran here (that's the usual cause of "nothing is set up").
 3. **Workspace map:** the surface's workspace-instructions file exists (`CLAUDE.md` on Claude; `AGENTS.md` on Codex) AND contains managed blocks whose start markers look like `<!-- managed-by-ai-employee-builder:…:start v=N -->`.
 4. **Template version:** compare that `v=N` number against the version named in the header that arrived with this very skill text (the "Workspace check" line names the current number). Same → up to date. Missing or lower → the workspace map is stale.
-5. **Content-employee assets (only if Step 1 said Chief Leverage Officers):** the `<!-- AIEB-CONTENT-EMPLOYEES:start -->` block in the chosen workspace-instructions file, `digital-assets/voice/voice-profile.md`, at least one approved sample named by that profile, and the brand doc the block names (usually `marketing/brand-positioning.md`).
+5. **Content-employee assets (only if Step 1 found the full membership):** the `<!-- AIEB-CONTENT-EMPLOYEES:start -->` block in the chosen workspace-instructions file, `digital-assets/voice/voice-profile.md`, at least one approved sample named by that profile, and the brand doc the block names (usually `marketing/brand-positioning.md`).
 6. **Email OS (optional):** check it only when the user asks about automated sequences/Kit, or when an `email-os` skill/configuration is already present in the surface's authored-skill home. Otherwise record `➖ optional — not configured` and continue. When it is present or requested, hand its connector, Notion, and Kit checks to `email-os`; do not make general AIEB setup depend on it.
 
 ### In Cowork / Claude Desktop
@@ -93,7 +93,7 @@ Offer ONLY the fixes that match findings, as a short menu. For each: say exactly
 | Managed block missing or `v=` stale | Refresh ONLY the text between the `:start` and `:end` markers in the surface's workspace-instructions file with the current template (re-fetch `onboard` and use its `scaffold-workspace` workflow for the canonical block text). On Codex, apply its platform mapping and update `AGENTS.md`, never `CLAUDE.md`. Blocks that exist in the workspace but NOT in the current template (e.g. the retired v=4 `skill-routing`, `quick-start`, `claude-folders`, `claude-state`, `update-check` blocks) are DELETED marker-to-marker, not refreshed. Never touch anything outside the markers; show what changes first. |
 | Surface-appropriate builder folders missing | Create only the missing folders named by the surface contract. Never create `.claude/agents/`, `.claude/commands/`, or `.claude/hooks/` on Codex. |
 | Onboarding never ran | Suggest running the `onboard` skill start to finish rather than patching pieces. On Cowork, offer this only inside the attached readable/writable Project folder. If that root is non-empty, name it and get explicit confirmation that it is the intended AIEB workspace before fetching `onboard`; an empty attached root may proceed directly. |
-| Voice profile, approved sample, or brand asset missing (Chief Leverage Officers) | Suggest running `setup-content-employees`. A sample folder without `voice-profile.md` is not a calibrated setup. |
+| Voice profile, approved sample, or brand asset missing (full membership) | Suggest running `setup-content-employees`. A sample folder without `voice-profile.md` is not a calibrated setup. |
 | Email OS requested or already configured | Hand off to `email-os` for its own preflight. If it is not installed/configured, show `➖ optional — not configured`; offer setup only when the user asked for automated sequences or Kit. |
 | Connector connected, but `get_skill` or `find_skill` is blocked or missing while other AIEB tools show (claude.ai, Cowork, Desktop) | Do not update or reinstall. Walk them to **Customize → Connectors → aieb → Tool permissions** and set **Get AI Employee skill instructions** and **Find the right AI Employee skill** to **Always allow** or **Needs approval**. Leave the report tools as they are. Then retry one `get_skill` call in a fresh chat. |
 | Account or connection problems on ANY device/chat | Update the plugin, then reconnect through the host's native AIEB connector control. In Cowork/Desktop, use **Customize → Connectors → aieb**; disconnect first only if an expired authorization is falsely marked **Connected**. The first-party page checks the purchase browser, existing course account, and verified Google email before offering the Lemon Squeezy key fallback. Existing Neon-linked members should reconnect without typing a key or consuming another activation. **The key never goes into chat.** A working legacy v0.29.x device connection may stay in place during migration; do not delete it manually. |
@@ -117,7 +117,7 @@ End with a compact card — one line per check, ✅ / ⚠️ / ❌ / ➖ (not ap
 AI Employee Builder — Setup Check
 ──────────────────────────────────
 Connector             ✅ AIEB server working (this session)
-Paid entitlement      ✅ Chief Leverage Officers
+Paid entitlement      ✅ AI Employee Builders (full membership)
 Workspace             ✅ <attached-workspace-root> (Cowork Project folder, read/write)
 Authored-skill home   ✅ .agents/skills/ present (Codex)
 Onboarding state      ✅ completed
