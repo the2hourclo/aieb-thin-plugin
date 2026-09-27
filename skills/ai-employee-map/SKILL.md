@@ -1,6 +1,6 @@
 ---
 name: ai-employee-map
-description: Builder employee · The free introductory AI Employee Map helps owners assess AI readiness across four levels (Manual → Documented → AI as a Tool → AI Employees) and identify a first AI opportunity. USE WHEN user explicitly says "ai employee map", "find AI opportunities", "where can I use AI", "ai readiness", "what level is my business", "am I ready for AI", or asks for the free intro map. Operational business diagnosis routes to business-x-ray; post-map build guidance routes to roadmap.
+description: Builder employee · The free introductory AI Employee Map helps owners assess AI readiness across four levels (Manual → Basic Digital Assets → Integrated → AI-Powered, the Business Owner's AI Playbook ladder) and identify a first AI opportunity. USE WHEN user explicitly says "ai employee map", "find AI opportunities", "where can I use AI", "ai readiness", "what level is my business", "am I ready for AI", pastes their Business Owner's AI Playbook results ("Run my AI Employee Map…"), or asks for the free intro map. Operational business diagnosis routes to business-x-ray; post-map build guidance routes to roadmap.
 ---
 
 # ai-employee-map — MCP loader
