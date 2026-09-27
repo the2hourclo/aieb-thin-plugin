@@ -9,17 +9,6 @@ workflows:
   deliver-email: "Format, validate, and save approved email prose"
   subject-line-fallback: "Three faithful options when headline is unavailable"
   finalize-artifact: "Risk-matched validation and artifact-only delivery"
-hooks:
-  Stop:
-    - hooks:
-        - type: command
-          timeout: 10
-          statusMessage: "Checking final response boundary"
-          command: node
-          args:
-            - "-e"
-            - >-
-              const fs=require('fs'),p=require('path');let roots=[process.env.CLAUDE_SKILL_DIR,process.env.CLAUDE_PLUGIN_ROOT&&p.join(process.env.CLAUDE_PLUGIN_ROOT,'skills','write'),process.env.CLAUDE_PROJECT_DIR&&p.join(process.env.CLAUDE_PROJECT_DIR,'.claude','skills','write'),process.env.CLAUDE_PROJECT_DIR&&p.join(process.env.CLAUDE_PROJECT_DIR,'.agents','skills','write')].filter(Boolean);for(let d=process.cwd();;){roots.push(p.join(d,'.claude','skills','write'),p.join(d,'.agents','skills','write'));const up=p.dirname(d);if(up===d)break;d=up;}const script=roots.map(root=>p.join(root,'scripts','write-stop-hook.js')).find(candidate=>fs.existsSync(candidate));if(script)require(script);else process.stdout.write(JSON.stringify({decision:'block',reason:'Write final-response gate is unavailable because its bundled helper could not be resolved.'}));
 ---
 
 # write — MCP loader

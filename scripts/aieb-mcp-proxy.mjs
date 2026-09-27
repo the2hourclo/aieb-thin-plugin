@@ -39,7 +39,7 @@ const PROXY_VERSION = (() => {
       // Try the next supported manifest shape.
     }
   }
-  return "0.33.6";
+  return "0.33.7";
 })();
 
 // Served ONCE per session via MCP initialize `instructions` (the host loads it
