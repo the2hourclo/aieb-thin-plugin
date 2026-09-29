@@ -6,8 +6,6 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { loadCore } from "./front-door-core/entry.mjs";
-import { verifyBuilderClosure, loadBuilder } from "./front-door-builder-entry.mjs";
 
 const fail = (code, more = {}) => ({ ok: false, code, ...more });
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -27,6 +25,19 @@ const BOM_AT_START = new RegExp(`^${String.fromCharCode(0xfeff)}`);
 const rungKinds = new Set(["no_build_one_off", "no_build_connect_first", "no_build_extend_existing", "asset", "skill", "connect", "system"]);
 const provenances = new Set(["member_said", "inferred_confirmed", "inferred_unconfirmed", "from_file", "from_map", "from_setup_intake"]);
 
+// The helper siblings load only after the input file is cleaned up, so a missing or broken helper
+// can never leave the member's answers on disk.
+let entryModules = null;
+async function entryPoints() {
+  if (!entryModules) {
+    const core = await import("./front-door-core/entry.mjs");
+    const builder = await import("./front-door-builder-entry.mjs");
+    entryModules = { loadCore: core.loadCore, verifyBuilderClosure: builder.verifyBuilderClosure, loadBuilder: builder.loadBuilder };
+  }
+  return entryModules;
+}
+const startupFailure = () => fail("mixed_version_closure", { detail: "helper scripts could not be loaded" });
+
 // The workflow's standard input file is read once and removed before anything runs, so what a member said never
 // lingers on disk. Only "already gone" is fine; any other failure stops the command until the file is really gone.
 function consumeInput(file) {
@@ -39,20 +50,23 @@ function consumeInput(file) {
   return fs.existsSync(full) ? stuck() : { ok: true };
 }
 
+// Reads the --json-file body and removes the file. { body } (null when unreadable) or { failure }.
+function takeInputFile(file) {
+  if (typeof file !== "string") return { body: null };
+  let body = null;
+  try { body = fs.readFileSync(file, "utf8").replace(BOM_AT_START, ""); }
+  catch { /* Still attempt cleanup when reading fails. */ }
+  let cleaned;
+  try { cleaned = consumeInput(file); } catch { cleaned = fail("input_cleanup_failed"); }
+  return cleaned.ok ? { body } : { failure: cleaned };
+}
+
 // { input } to run the command, or { failure } to print instead (input is null when it could not be read or parsed).
-async function readInput(argv) {
+async function readInput(argv, taken) {
   const at = (flag) => argv.indexOf(flag);
   try {
     if (at("--json") >= 0) return { input: JSON.parse(argv[at("--json") + 1]) };
-    if (at("--json-file") >= 0) {
-      const file = argv[at("--json-file") + 1];
-      let body = null;
-      try { body = fs.readFileSync(file, "utf8").replace(BOM_AT_START, ""); }
-      catch { /* Still attempt cleanup when reading fails. */ }
-      const cleaned = consumeInput(file);
-      if (!cleaned.ok) return { failure: cleaned };
-      return { input: body === null ? null : JSON.parse(body) };
-    }
+    if (taken) return { input: taken.body === null ? null : JSON.parse(taken.body) };
     if (process.stdin.isTTY) return { input: {} };
     const chunks = [];
     for await (const chunk of process.stdin) chunks.push(chunk);
@@ -62,6 +76,7 @@ async function readInput(argv) {
 }
 
 async function load() {
+  const { loadCore, loadBuilder } = await entryPoints();
   const names = ["readiness", "identity", "state", "journal", "precedence"];
   const loaded = await Promise.all(names.map((name) => loadCore(name)));
   const bad = loaded.find((item) => !item.ok);
@@ -76,6 +91,17 @@ async function load() {
 
 const validRoot = (root) => typeof root === "string" && path.isAbsolute(root) && fs.existsSync(root)
   && fs.statSync(root).isDirectory();
+
+// A link or junction anywhere in the notes folder path: nothing may be read or saved through it.
+function notesFolderLinked(root) {
+  let current = root;
+  for (const part of [".claude-state", "front-door-scripts"]) {
+    current = path.join(current, part);
+    try { if (fs.lstatSync(current).isSymbolicLink()) return true; }
+    catch (error) { return error?.code !== "ENOENT"; }
+  }
+  return false;
+}
 
 function verifiedRoot(m, input) {
   if (!validRoot(input.root)) return fail("invalid_input", { detail: "root must be an existing absolute folder path" });
@@ -322,10 +348,13 @@ async function markOnboarded(m, input) {
 }
 
 export async function run(command, input) {
-  const closure = verifyBuilderClosure(); if (!closure.ok) return closure;
+  let closure;
+  try { closure = (await entryPoints()).verifyBuilderClosure(); } catch { return startupFailure(); }
+  if (!closure.ok) return closure;
   if (!COMMANDS.includes(command)) return fail("unknown_command", { usage: COMMANDS.join(" | ") });
   if (command === "verify") return { ok: true, version: closure.version, commands: COMMANDS };
   if (!input || typeof input !== "object" || Array.isArray(input)) return fail("invalid_input", { detail: "JSON object expected" });
+  if (validRoot(input.root) && notesFolderLinked(input.root)) return fail("symlink_escape", { detail: ".claude-state" });
   const m = await load(); if (!m.ok) return m;
   if (command === "readiness") {
     if (!validRoot(input.root)) return fail("invalid_input", { detail: "root must be an existing absolute folder path" });
@@ -347,11 +376,20 @@ export async function run(command, input) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [command, ...rest] = process.argv.slice(2);
-  const closureFirst = verifyBuilderClosure();
-  let result = closureFirst;
-  if (closureFirst.ok) {
-    const read = command === "verify" ? { input: {} } : await readInput(rest);
-    result = read.failure || await run(command, read.input === null ? undefined : read.input);
+  // Cleanup comes first, so a refused or crashed start never leaves input.json behind; a cleanup failure wins.
+  const fileAt = rest.indexOf("--json-file");
+  const taken = fileAt >= 0 ? takeInputFile(rest[fileAt + 1]) : null;
+  let result;
+  if (taken?.failure) result = taken.failure;
+  else {
+    try {
+      const closureFirst = (await entryPoints()).verifyBuilderClosure();
+      result = closureFirst;
+      if (closureFirst.ok) {
+        const read = command === "verify" ? { input: {} } : await readInput(rest, taken);
+        result = read.failure || await run(command, read.input === null ? undefined : read.input);
+      }
+    } catch { result = startupFailure(); }
   }
   process.stdout.write(`${JSON.stringify(result)}\n`);
   if (!result.ok && result.root !== "verified") process.exitCode = 2;

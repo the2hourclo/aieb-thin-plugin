@@ -118,9 +118,11 @@ export async function installBundle({ root, surface, writeAccess }) {
   if (conflicts.length) return { ok: false, code: "install_conflict", conflicts };
 
   const createdFiles = [], createdFolders = [];
+  // Removes every file this run created, including one that failed mid-write, then checks none is left.
   const rollback = () => {
-    for (const file of createdFiles.reverse()) { try { fs.unlinkSync(file); } catch { /* best effort */ } }
-    for (const folder of createdFolders.reverse()) { try { fs.rmdirSync(folder); } catch { /* not empty or gone */ } }
+    for (const file of [...createdFiles].reverse()) { try { fs.unlinkSync(file); } catch { /* checked below */ } }
+    for (const folder of [...createdFolders].reverse()) { try { fs.rmdirSync(folder); } catch { /* not empty or gone */ } }
+    return createdFiles.filter((file) => fs.existsSync(file));
   };
   try {
     for (const item of missing) {
@@ -131,16 +133,25 @@ export async function installBundle({ root, surface, writeAccess }) {
       for (const dir of absent.reverse()) { fs.mkdirSync(dir); createdFolders.push(dir); }
       const recheck = checkDestination(readiness, project, item.relative);
       if (!recheck.ok) throw Object.assign(new Error(recheck.detail || "destination changed"), { installCode: recheck.code || "install_conflict" });
-      fs.writeFileSync(checked.path, item.bytes, { flag: "wx" });
+      const fd = fs.openSync(checked.path, "wx");
       createdFiles.push(checked.path);
+      let closed = false;
+      try {
+        for (let at = 0; at < item.bytes.length;) at += fs.writeSync(fd, item.bytes, at, item.bytes.length - at);
+        closed = true;
+        fs.closeSync(fd);
+      } catch (error) {
+        if (!closed) { try { fs.closeSync(fd); } catch { /* the rollback removes the file */ } }
+        throw error;
+      }
     }
     const installed = path.join(project, ...installDirectory.split("/"));
     const builderAfter = checkManifest(installed, builderManifestName, builderExpected);
     const coreAfter = checkManifest(path.join(installed, "front-door-core"), coreManifestName, expected);
     if (!builderAfter.ok || !coreAfter.ok) throw Object.assign(new Error((builderAfter.ok ? coreAfter : builderAfter).detail), { installCode: "install_verify_failed" });
   } catch (error) {
-    rollback();
-    return failure(error.installCode || "install_failed", error.message);
+    const left = rollback();
+    return failure(error.installCode || "install_failed", error.message, left.length ? { rollback_incomplete: left.map((file) => path.relative(project, file).split(path.sep).join("/")) } : {});
   }
   return { ok: true, directory: installDirectory, installed: missing.map((item) => item.relative), unchanged, verified: true };
 }
