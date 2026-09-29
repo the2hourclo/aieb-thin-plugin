@@ -50,6 +50,19 @@ function consumeInput(file) {
   return fs.existsSync(full) ? stuck() : { ok: true };
 }
 
+// The standard input file lives in the notes folder. When that folder or .claude-state is a link (or cannot be
+// checked), the file may sit outside the project, so it is neither read nor deleted: the command refuses first.
+function inputFolderLinked(file) {
+  if (typeof file !== "string") return false;
+  const full = path.resolve(file);
+  if (path.basename(full) !== "input.json" || path.basename(path.dirname(full)) !== "front-door-scripts") return false;
+  for (const dir of [path.dirname(full), path.dirname(path.dirname(full))]) {
+    try { if (fs.lstatSync(dir).isSymbolicLink()) return true; }
+    catch (error) { if (error?.code !== "ENOENT") return true; }
+  }
+  return false;
+}
+
 // Reads the --json-file body and removes the file. { body } (null when unreadable) or { failure }.
 function takeInputFile(file) {
   if (typeof file !== "string") return { body: null };
@@ -377,10 +390,13 @@ export async function run(command, input) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [command, ...rest] = process.argv.slice(2);
   // Cleanup comes first, so a refused or crashed start never leaves input.json behind; a cleanup failure wins.
+  // A linked notes folder is refused before the input file is touched, so nothing outside the project is read or deleted.
   const fileAt = rest.indexOf("--json-file");
-  const taken = fileAt >= 0 ? takeInputFile(rest[fileAt + 1]) : null;
+  const linkedInput = fileAt >= 0 && inputFolderLinked(rest[fileAt + 1]);
+  const taken = fileAt >= 0 && !linkedInput ? takeInputFile(rest[fileAt + 1]) : null;
   let result;
-  if (taken?.failure) result = taken.failure;
+  if (linkedInput) result = fail("symlink_escape", { detail: ".claude-state" });
+  else if (taken?.failure) result = taken.failure;
   else {
     try {
       const closureFirst = (await entryPoints()).verifyBuilderClosure();

@@ -8,8 +8,8 @@
     },
     {
       "path": "front-door-cli.mjs",
-      "sha256_raw": "7cf72bc0dbda7b1fa0fba0868bb8a74febdb497ab438fcfe95e565e8643149e9",
-      "sha256_eol_normalized": "95d75e97ace3a42e9828f398af39834673278e9483ddfebfd5761621a85281b2"
+      "sha256_raw": "a371724edb183d48716d1e8dbd4c48f2e04f27d0d1dbee7dd1d8306e209e928f",
+      "sha256_eol_normalized": "b977ee7b24982da922c8315b6d1489c00635b12a9eaea2087aa3823fd5f2fc68"
     },
     {
       "path": "front-door-build.mjs",
