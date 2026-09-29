@@ -84,6 +84,7 @@ export async function installBundle({ root, surface, writeAccess }) {
   if (!loaded.ok) return loaded;
   const readiness = loaded.module;
   const ready = readiness.fullReadiness({ root, surface, write_access: writeAccess, evidence: null });
+  if (ready.code === "symlink_escape") return failure("symlink_escape", ".claude-state");
   if (!ready.ok) return { ok: false, code: "readiness_failed", root: ready.root, reason: ready.reason, next_action: ready.next_action };
   const project = ready.canonical_path;
 

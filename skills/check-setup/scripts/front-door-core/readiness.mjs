@@ -100,9 +100,25 @@ export function rootFromHost({ root, surface = "codex", write_access = "unknown"
     access: write_access === "read_only" ? "read_only" : "unknown" });
 }
 
+// The notes folder (.claude-state) and its scripts folder must be real folders inside the project. A link there,
+// or a folder that cannot be checked, could carry any save outside the project, so every route stops here first.
+export function notesFolderSafe(root) {
+  let current = root;
+  for (const part of [".claude-state", "front-door-scripts"]) {
+    current = path.join(current, part);
+    try { if (fs.lstatSync(current).isSymbolicLink()) return false; }
+    catch (error) { return error?.code === "ENOENT"; }
+  }
+  return true;
+}
+
 // Read-only: evaluating readiness never writes.
 export function fullReadiness(input = {}) {
   const rootResult = rootFromHost(input);
+  if (rootResult.root === "verified" && !notesFolderSafe(input.root)) {
+    return { ...rootResult, ok: false, code: "symlink_escape", detail: ".claude-state", notes_folder: "unsafe",
+      workspace_state: { workspace: "partial", missing: ["onboarding_record"], next_action: "unsafe_notes_folder" } };
+  }
   const workspace_state = reconcileWorkspace({ root: input.root, surface: input.surface || "codex", rootResult });
   return { ...rootResult, ok: rootResult.root === "verified", workspace_state };
 }
