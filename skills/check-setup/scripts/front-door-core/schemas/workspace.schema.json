@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AIEB workspace identity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "workspace_id", "created_at", "root_confirmations"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "workspace_id": {"type": "string", "format": "uuid"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "root_confirmations": {"type": "array", "items": {"type": "object", "additionalProperties": false,
+      "required": ["canonical_path", "surface", "evidence", "confirmed_at"],
+      "properties": {"canonical_path": {"type": "string"}, "surface": {"type": "string"},
+        "evidence": {"type": "array", "items": {"type": "object"}}, "confirmed_at": {"type": "string", "format": "date-time"}}}}
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AIEB active build pointer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "build_id", "workspace_id", "set_at"],
+  "properties": {"schema_version": {"const": 1}, "build_id": {"type": "string", "format": "uuid"},
+    "workspace_id": {"type": "string", "format": "uuid"}, "set_at": {"type": "string", "format": "date-time"}}
+}

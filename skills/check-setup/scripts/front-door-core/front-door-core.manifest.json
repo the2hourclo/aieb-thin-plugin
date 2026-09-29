@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "entry.mjs",
+      "sha256_raw": "1da4c0a491e4b9a932590453cb4a5b52e8c3a6aa641c6118e081fd43092ea574",
+      "sha256_eol_normalized": "84ed0a9d5763597afbe634072887ee10584e269e528793242552c35f1fcb52e5"
+    },
+    {
+      "path": "readiness.mjs",
+      "sha256_raw": "2525d9dabaaf783dd7d9ce4b89e98ffaf6353369b23f1b7c6521db83ef5da190",
+      "sha256_eol_normalized": "6d6f513128b070a33443abc3fa36502fe0a61c2bdfbde212a2b17d990c3b5e0b"
+    },
+    {
+      "path": "identity.mjs",
+      "sha256_raw": "69886acec0ca5decba90e6e01a73bb68a2869978938b776e4bfcdbdac398f6b8",
+      "sha256_eol_normalized": "8bb3d0ace1e30d081d35c53eef08bf26bdbab889d68a57c4d969c4fc97593242"
+    },
+    {
+      "path": "precedence.mjs",
+      "sha256_raw": "20db3e02128203c2a1617cf4b5278582c988235e966c3fda88d17cea7122b7ad",
+      "sha256_eol_normalized": "6f731343c27745d5e9b6170e5e5d64e4669b634b2168fcc0802ada6b2fe15e61"
+    },
+    {
+      "path": "lock.mjs",
+      "sha256_raw": "ec5835de68d65e4f24455a5f194a896e52f619590070ff78789565d1e73bad20",
+      "sha256_eol_normalized": "014a5a6e51f471269f8357ba13b9631a3dd532d077983ad5a4ca9e5eda9de931"
+    },
+    {
+      "path": "journal.mjs",
+      "sha256_raw": "98ad842d9861c5295c886623f2092b29dbb7746e759c516cb5183cefee08192a",
+      "sha256_eol_normalized": "5d88c12e2c2bca72842185deeeae36d571592947a87aacd2a4aa68faa2477cba"
+    },
+    {
+      "path": "state.mjs",
+      "sha256_raw": "c72cd76295938ff00ac16b5c3220f045d91df3ee56ce2359c36ca6ac580e7e6c",
+      "sha256_eol_normalized": "2588a9229c3762ac29c4f37a39439aaec37a3b0af865dccdee046da3442a18fd"
+    },
+    {
+      "path": "schemas/workspace.schema.json",
+      "sha256_raw": "20e4fff411086f88c67ed291917c409763ca346ba689fb654de6e59a89f57d26",
+      "sha256_eol_normalized": "615ee8983733c59bc0b0135adaa19f787be359e51b9e33a4e1c4b178f3755aee"
+    },
+    {
+      "path": "schemas/pending-build.schema.json",
+      "sha256_raw": "7698dbba6d4b86ac9194ce9442d1c4f138b56ec8e3443842f1eafa5571e76399",
+      "sha256_eol_normalized": "211703a8d1bf149615cb343a3cfc9ed3c5b818f1a3bef7901c2bb46ddc9d124f"
+    }
+  ]
+}

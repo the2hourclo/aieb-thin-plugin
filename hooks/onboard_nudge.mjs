@@ -7,7 +7,9 @@
  *
  * Three workspace states, three behaviors (mutually exclusive with
  * roadmap_nudge, which owns the post-onboarding ladder):
- *   - FRESH (no state, no skills)      → offer onboarding (max 3 nudges)
+ *   - FRESH (no state, no skills)      → a first message that asks for an AI Employee
+ *     goes to the meta-create-skill front door (it runs setup as part of the build);
+ *     anything else gets ONE offer to build the first AI Employee (max 3 nudges)
  *   - MID-ONBOARDING (state, not done) → inject the resume context EVERY
  *     session, with the current phase/step, so a buyer who says "hi" gets
  *     picked up exactly where they left off (e.g. scaffold done, Business
@@ -115,23 +117,38 @@ function bumpCount(counterFile, cwd, newCount) {
   }
 }
 
+// The one line a member may be offered on a fresh workspace. Change the wording
+// here and nowhere else; the tests read this constant from the source.
+const FRESH_OFFER_LINE =
+  "Looks like AI Employee Builders is freshly installed here. Want to build your first AI Employee? " +
+  "Tell me the job you'd like help with, and I'll set up your workspace as part of it.";
+
+// The hook runs before the member's first message exists, so it hands the model a
+// conditional instruction: a build request goes straight to the front door, which
+// runs setup as part of the build; only a fresh workspace with no build request
+// gets the single offer above.
+//
 // The remote OAuth credential is deliberately host-managed, so a plugin hook
 // cannot and should not infer connection state from ~/.aieb-mcp. The paid-tool
 // probe is authoritative: if authentication is missing, the host opens its
 // normal Connect flow before the tool call continues.
 const NUDGE_REMOTE =
   `[${PLUGIN_NAME} hook] This looks like a fresh workspace for the ai-employee-builder ` +
-  "plugin — onboarding hasn't run here and no skills have been authored yet. When " +
-  "there's a natural opening (after acknowledging the user's actual first request, " +
-  'not instead of it), offer ONCE, casually: "Looks like ai-employee-builder is ' +
-  "freshly installed here. Want me to set up the authoring folders and walk you " +
-  "through building your first custom skill? About 10 minutes — just say 'onboard " +
-  "me'. Or we can dive straight into what you came to do.\" Many buyers install this " +
-  "into an existing project, so don't push a folder scaffold on them — if the user " +
-  "says no, accept it gracefully and stay silent. If their first message is already " +
-  "about onboarding, call the paid `get_skill` tool for `onboard`; if the host asks " +
-  "the user to connect AIEB, let its native secure browser flow finish and then retry. " +
-  "Don't ask for a license key in chat and don't double-offer.";
+  "plugin — onboarding hasn't run here and no skills have been authored yet. Route the " +
+  "user's FIRST message like this. " +
+  "(1) If it asks for an AI Employee, a job to automate, or help getting started " +
+  "(build, hire or create an AI Employee; automate something; \"I don't know where to " +
+  "start\"), load the `meta-create-skill` skill and follow its front door. The front " +
+  "door checks the folder and runs setup as part of the build, so do NOT offer " +
+  "onboarding separately and do NOT say the offer line in (2). " +
+  "(2) If it is anything else, do what they asked first. Then, at a natural pause, " +
+  `offer ONCE, casually: "${FRESH_OFFER_LINE}" Many buyers install this into an ` +
+  "existing project, so don't push a folder scaffold on them — if the user says no, " +
+  "accept it gracefully and stay silent. " +
+  "(3) If their first message is already about onboarding (\"onboard me\", \"set up my " +
+  "workspace\"), call the paid `get_skill` tool for `onboard`. " +
+  "If the host asks the user to connect AIEB, let its native secure browser flow finish " +
+  "and then retry. Don't ask for a license key in chat and don't double-offer.";
 
 // Legacy per-phase progress file written by the onboard skill. Returns the
 // parsed object or null; a file with completed_at set is NOT mid-flight.

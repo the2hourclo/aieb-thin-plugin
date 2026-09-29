@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "front-door-builder-entry.mjs",
+      "sha256_raw": "58c630ea43a609b8c77eb86258c870b08c211348bbef1d7946095271b0144315",
+      "sha256_eol_normalized": "b4b0397df886485cd5127cb4018e887189a57f2a60f1461385a91863347c2365"
+    },
+    {
+      "path": "front-door-cli.mjs",
+      "sha256_raw": "a13cbdf51149c1974770a74f1e1ba9a002d3e0860140dc2bbfed59bdeb2b5d68",
+      "sha256_eol_normalized": "f255f1e4a552f244d20c772705b34ad3641e7dbf632dbdef05ae45b272ea79c1"
+    },
+    {
+      "path": "front-door-build.mjs",
+      "sha256_raw": "6b402fb6b1d4e2aaec2a421d77de0e6aa3be4ca1baaba66dcd64b388c32f5033",
+      "sha256_eol_normalized": "02362e2daa4f12d7be8bd6dfb4ba35e95de435cc2f5ca642733f5515261efa27"
+    },
+    {
+      "path": "front-door-adapters.mjs",
+      "sha256_raw": "5a4508b4b4d26d60d49f3ecef141f117cda250a27b664a082a9aed213d80f89f",
+      "sha256_eol_normalized": "3c92d548d37c1882ccf0df4f98b69500650816641eb25771629255bc9cd0f527"
+    },
+    {
+      "path": "front-door-assets.mjs",
+      "sha256_raw": "61fd4a2aa29dbb9edf6270ebdfbd954efa49fae48fe8c64b9b4412f094307b4b",
+      "sha256_eol_normalized": "a97e93b8b6615ad262a3f61ebb11b739ad5398dfb04864c09708691fe6dee2fd"
+    },
+    {
+      "path": "front-door-brief.mjs",
+      "sha256_raw": "e1e311219608a9452537275f27990e49955625f9b470b48e693b583da013bee1",
+      "sha256_eol_normalized": "dfd97f88ed8c4da546760648a2a1bc2eb46d7921857198a85fe944c28a7fdabe"
+    },
+    {
+      "path": "build-record.schema.json",
+      "sha256_raw": "69bfe81ef357e19e1afb728fb78298bda446ab39d9785d921a6cf14911a30898",
+      "sha256_eol_normalized": "6f78b3bd4529d8d9c0eee0e00d0c19fb8f0cadde1043956ae520c71686d25408"
+    },
+    {
+      "path": "build-record.restricted.schema.json",
+      "sha256_raw": "2f3917afbb69609ad67acb0ff663081fd48e1630094a432a65e96e4b0f0f896e",
+      "sha256_eol_normalized": "a2d5dd5c79172fa714b083a9e15b8e89c30e43d14a942e47539e3cf929b9544c"
+    },
+    {
+      "path": "validate-structure.mjs",
+      "sha256_raw": "38829d47fde940478d3f2402ae0eb3d3325cc7ac54fff9d78d318884167df43a",
+      "sha256_eol_normalized": "0cd2080a3602763ed7c8e5100a8c362ec480ecc92ed11f4a9113af92f1f52734"
+    }
+  ]
+}
