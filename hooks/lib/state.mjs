@@ -191,14 +191,31 @@ export function stateFilePath(cwd) {
 }
 
 // Returns the parsed state object, or null if the file is missing/unreadable/bad.
+// A blank, comment-only or truncated file parses to {} (or a map with neither
+// `onboarding` nor `ladder`); that carries no state, so it reads as null rather
+// than as "onboarding started, never finished".
 export function readState(cwd) {
   try {
     const p = stateFilePath(cwd);
     if (!fs.existsSync(p)) return null;
-    return parseYaml(fs.readFileSync(p, "utf8"));
+    const state = parseYaml(fs.readFileSync(p, "utf8"));
+    if (!state || typeof state !== "object" || Array.isArray(state)) return null;
+    if (!("onboarding" in state) && !("ladder" in state)) return null;
+    return state;
   } catch {
     return null;
   }
+}
+
+// True when the Business X-Ray is the step in flight. X-Ray-only buyers have no
+// `onboard` entitlement, so resume text must send them to `business-x-ray`.
+export function xrayIsCurrent(state) {
+  const ob = state && state.onboarding && typeof state.onboarding === "object" ? state.onboarding : {};
+  const ladder = state && state.ladder && typeof state.ladder === "object" ? state.ladder : {};
+  if (ladder["2-map"] === "in_progress" || ladder["2-map"] === "in-progress") return true;
+  if (typeof ob.current_step === "string" && /x-?ray/i.test(ob.current_step)) return true;
+  const phases = ob.phases && typeof ob.phases === "object" && !Array.isArray(ob.phases) ? ob.phases : {};
+  return Object.entries(phases).some(([name, status]) => /x-?ray/i.test(name) && /^in[-_ ]?progress$/i.test(String(status)));
 }
 
 export function onboardingComplete(state) {

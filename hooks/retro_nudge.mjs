@@ -21,19 +21,23 @@
  *
  * Behavior:
  *   1. Locate the previous transcript: all .jsonl siblings of this session's
- *      transcript, excluding the current one, most-recently-modified wins.
- *   2. If we've already nudged about that transcript (marker file keyed by
- *      transcript filename), exit silent.
+ *      transcript, excluding the current one and anything touched in the last
+ *      10 minutes (a concurrent window), and on Codex any rollout whose
+ *      session_meta cwd is another project; most-recently-modified wins.
+ *   2. If we've already scanned that transcript (marker in the plugin's own
+ *      state dir, keyed by workspace + transcript filename), exit silent.
  *   3. Scan USER messages only for explicit friction or win phrases. Tool
  *      output and assistant text never count as customer feedback.
  *   4. Emit additionalContext with the nudge.
  *   5. When the workspace explicitly opted in, append pointer-only evidence to
  *      the runtime inbox and ingest it into the shared local AIEB ledger.
- *   6. Mark the transcript as nudged so resumes don't repeat it.
+ *   6. Mark the transcript as scanned (match or not) so resumes and clears
+ *      don't re-read it. Skipped on `source == "compact"`.
  *
  * All failure modes exit 0 silently — the nudge is a nice-to-have, never a
  * blocker.
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -99,8 +103,9 @@ const COMMON_NUDGE =
 const FRICTION_NUDGE =
   "FRICTION: If this was the user's OWN skill in " +
   `${OWN_SKILLS_PATH}, do not report it as AIEB product feedback; offer to run ${RETRO_ACTION} and patch that ` +
-  "skill's SKILL.md. If it was a plugin-shipped skill fetched through get_skill, call report_skill_feedback once " +
-  "with signal=friction and the closest fixed category (no free text). Then lead with the instant local fix: offer " +
+  "skill's SKILL.md. If it was a plugin-shipped skill fetched through get_skill, call report_product_outcome once " +
+  "with that skill_id, outcome=completed_with_rework, friction=output_quality (or the closest fixed friction " +
+  "category) and the closest fixed activity_type and output_type (no free text). Then lead with the instant local fix: offer " +
   "to add one or two additive rules to digital-assets/overrides/<skill>.md using " +
   "self-improve/write-override-procedure.md. Separately, you may offer to send one richer anonymized note to the " +
   "author; only after an explicit yes, follow skill-telemetry/note-friction-procedure.md. The override and rich note " +
@@ -110,7 +115,8 @@ const WIN_NUDGE =
   "WIN: If this was the user's OWN skill in " +
   `${OWN_SKILLS_PATH}, do not report it as AIEB product feedback; offer to run ${RETRO_ACTION} and preserve the ` +
   "winning move in that skill. If it was a plugin-shipped skill fetched through get_skill, call " +
-  "report_skill_feedback once with signal=win and the closest fixed category (no free text). You may then offer to " +
+  "report_product_outcome once with that skill_id, outcome=completed, friction=none and the closest fixed " +
+  "activity_type and output_type (no free text). You may then offer to " +
   "send the author one richer anonymized win note; only after an explicit yes, follow " +
   "skill-telemetry/note-win-procedure.md. Do not treat a generic thank-you as a win. ";
 
@@ -121,7 +127,48 @@ function buildNudge(signals, ledger = null) {
   return COMMON_NUDGE + (signals.friction ? FRICTION_NUDGE : "") + (signals.win ? WIN_NUDGE : "") + ledgerContext;
 }
 
-function findPreviousTranscript(current) {
+// A sibling transcript touched this recently may be another window still in
+// progress; its half-finished work is not "the previous session".
+const MIN_IDLE_MS = 10 * 60 * 1000;
+const SESSION_META_READ_BYTES = 256 * 1024;
+
+function sameDir(a, b) {
+  const norm = (p) => path.resolve(String(p)).replace(/[\\/]+$/, "");
+  const x = norm(a);
+  const y = norm(b);
+  return process.platform === "win32" || process.platform === "darwin" ? x.toLowerCase() === y.toLowerCase() : x === y;
+}
+
+// Codex keeps every project's rollouts in one per-day folder. Its first record
+// (session_meta) names the session's cwd; a sibling that declares a different
+// cwd belongs to another project. No readable session_meta -> no opinion.
+function belongsToOtherProject(transcript, cwd) {
+  let fd;
+  try {
+    fd = fs.openSync(transcript, "r");
+    const buf = Buffer.alloc(SESSION_META_READ_BYTES);
+    const n = fs.readSync(fd, buf, 0, buf.length, 0);
+    const text = buf.toString("utf8", 0, n);
+    const nl = text.indexOf("\n");
+    if (nl === -1 && n === buf.length) return false;
+    const first = JSON.parse(nl === -1 ? text : text.slice(0, nl));
+    if (first?.type !== "session_meta") return false;
+    const theirs = first.payload?.cwd;
+    return typeof theirs === "string" && theirs !== "" && !sameDir(theirs, cwd);
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) {
+      try {
+        fs.closeSync(fd);
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+function findPreviousTranscript(current, cwd) {
   try {
     const parent = path.dirname(current);
     if (!fs.existsSync(parent)) return null;
@@ -131,6 +178,7 @@ function findPreviousTranscript(current) {
     } catch {
       currentReal = path.resolve(current);
     }
+    const now = Date.now();
     const candidates = [];
     for (const name of fs.readdirSync(parent)) {
       if (!name.endsWith(".jsonl")) continue;
@@ -142,31 +190,46 @@ function findPreviousTranscript(current) {
         real = path.resolve(p);
       }
       if (real === currentReal) continue;
-      candidates.push(p);
+      let mtimeMs;
+      try {
+        mtimeMs = fs.statSync(p).mtimeMs;
+      } catch {
+        continue;
+      }
+      if (now - mtimeMs < MIN_IDLE_MS) continue;
+      candidates.push({ p, mtimeMs });
     }
-    if (candidates.length === 0) return null;
-    candidates.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
-    return candidates[0];
+    candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    for (const { p } of candidates) {
+      if (!belongsToOtherProject(p, cwd)) return p;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-function flattenMessageText(value) {
-  if (typeof value === "string") return value;
-  if (Array.isArray(value)) return value.map(flattenMessageText).filter(Boolean).join("\n");
-  if (!value || typeof value !== "object") return "";
-  if (typeof value.text === "string") return value.text;
-  if (typeof value.message === "string") return value.message;
-  return flattenMessageText(value.content);
+// Only what the person typed counts: plain string content or text blocks.
+// tool_result blocks (file reads, web pages, fetched skill bodies) are ignored.
+function userContentText(content) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((block) => {
+      if (typeof block === "string") return block;
+      return block && typeof block === "object" && block.type === "text" && typeof block.text === "string" ? block.text : "";
+    })
+    .filter(Boolean)
+    .join("\n");
 }
 
+// null = unreadable (caller must not treat it as "scanned, nothing found").
 function userMessagesFromTranscript(transcript) {
   let body;
   try {
     body = fs.readFileSync(transcript, "utf8");
   } catch {
-    return "";
+    return null;
   }
   const messages = [];
   for (const line of body.split(/\r?\n/)) {
@@ -177,11 +240,12 @@ function userMessagesFromTranscript(transcript) {
     } catch {
       continue;
     }
-    if (record?.message?.role === "user") messages.push(flattenMessageText(record.message.content));
-    else if (record?.role === "user") messages.push(flattenMessageText(record.content));
-    else if (record?.type === "user") messages.push(flattenMessageText(record.message?.content ?? record.content));
-    else if (record?.payload?.type === "user_message") {
-      messages.push(flattenMessageText(record.payload.message ?? record.payload.content));
+    if (!record || typeof record !== "object" || record.isMeta || record.toolUseResult !== undefined) continue;
+    if (record.message?.role === "user") messages.push(userContentText(record.message.content));
+    else if (record.role === "user") messages.push(userContentText(record.content));
+    else if (record.type === "user") messages.push(userContentText(record.message?.content ?? record.content));
+    else if (record.payload?.type === "user_message") {
+      messages.push(userContentText(record.payload.message ?? record.payload.content));
     }
   }
   return messages.filter(Boolean);
@@ -189,6 +253,7 @@ function userMessagesFromTranscript(transcript) {
 
 function feedbackMatches(transcript) {
   const messages = userMessagesFromTranscript(transcript);
+  if (messages === null) return null;
   const matches = [];
   messages.forEach((userText, message_index) => {
     if (FRICTION_PATTERNS.some((pattern) => pattern.test(userText))) {
@@ -208,9 +273,34 @@ function feedbackSignals(matches) {
   };
 }
 
-function alreadyNudgedMarker(cwd, transcript) {
+// Old location inside the project folder; still honored so a transcript
+// already nudged there is not nudged again. Never written any more.
+function legacyMarker(cwd, transcript) {
   const safe = path.basename(transcript).replace(/[^A-Za-z0-9_.-]/g, "_");
   return path.join(cwd, ".claude-state", `retro-nudged-${PLUGIN_NAME}-${safe}`);
+}
+
+// Kept in the plugin's own state dir, keyed by workspace + transcript, so the
+// hook never writes into the member's project folder.
+function alreadyNudgedMarker(cwd, transcript) {
+  let key;
+  try {
+    key = fs.realpathSync(cwd);
+  } catch {
+    key = String(cwd);
+  }
+  const ws = crypto.createHash("sha1").update(String(key), "utf8").digest("hex").slice(0, 16);
+  const safe = path.basename(transcript).replace(/[^A-Za-z0-9_.-]/g, "_");
+  return path.join(claudeRoot(), ".clo-os-state", `retro-nudged-${PLUGIN_NAME}-${ws}-${safe}`);
+}
+
+function writeMarker(marker) {
+  try {
+    fs.mkdirSync(path.dirname(marker), { recursive: true });
+    fs.writeFileSync(marker, "", "utf8");
+  } catch {
+    // best-effort — a missing marker only risks one extra scan or nudge
+  }
 }
 
 async function readStdin() {
@@ -235,6 +325,8 @@ async function main() {
     return;
   }
 
+  if (event.source === "compact") return;
+
   const cwd = typeof event.cwd === "string" && event.cwd ? event.cwd : process.cwd();
   const transcriptPath = event.transcript_path;
   if (!transcriptPath) {
@@ -242,7 +334,7 @@ async function main() {
     return;
   }
 
-  const prior = findPreviousTranscript(transcriptPath);
+  const prior = findPreviousTranscript(transcriptPath, cwd);
   if (prior === null) {
     logEvent("no-prior-transcript");
     return;
@@ -250,7 +342,7 @@ async function main() {
 
   const marker = alreadyNudgedMarker(cwd, prior);
   try {
-    if (fs.existsSync(marker)) {
+    if (fs.existsSync(marker) || fs.existsSync(legacyMarker(cwd, prior))) {
       logEvent("already-nudged", { prior: path.basename(prior) });
       return;
     }
@@ -259,17 +351,15 @@ async function main() {
   }
 
   const matches = feedbackMatches(prior);
+  if (matches === null) {
+    logEvent("transcript-unreadable", { prior: path.basename(prior) });
+    return;
+  }
   const signals = feedbackSignals(matches);
+  writeMarker(marker);
   if (!signals.friction && !signals.win) {
     logEvent("no-feedback", { prior: path.basename(prior) });
     return;
-  }
-
-  try {
-    fs.mkdirSync(path.dirname(marker), { recursive: true });
-    fs.writeFileSync(marker, "", "utf8");
-  } catch {
-    // best-effort — a missing marker only risks one extra nudge
   }
 
   const ledger = captureAndIngest({

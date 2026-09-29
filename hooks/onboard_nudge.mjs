@@ -37,7 +37,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { stateFilePath, readState, onboardingComplete } from "./lib/state.mjs";
+import { stateFilePath, readState, onboardingComplete, xrayIsCurrent } from "./lib/state.mjs";
 
 const PLUGIN_NAME = "ai-employee-builder";
 const MAX_NUDGES = 3;
@@ -172,15 +172,19 @@ function summarizePhases(phases) {
     .join(" · ");
 }
 
-function buildResumeNudge(detail) {
+function buildResumeNudge(detail, xray = false) {
+  const resume = xray
+    ? "fetch `get_skill` with `skill_id: business-x-ray`, `path: SKILL.md` and let it resume its own map " +
+      "rather than restarting"
+    : "fetch `get_skill` with `skill_id: onboard`, `path: SKILL.md` and let it resume (it skips completed " +
+      "phases; if the in-progress step is the Business X-Ray, it hands off to `business-x-ray`, which " +
+      "resumes its own map rather than restarting)";
   return (
     `[${PLUGIN_NAME} hook] This workspace is MID-ONBOARDING — setup started here but never finished.` +
     (detail ? ` Where it stands: ${detail}.` : "") +
     " If the user's first message is a greeting or open-ended ('hi', 'what's next', 'where were we'), " +
     "pick the thread up: say in ONE line where you both left off, then continue from the current step — " +
-    "fetch `get_skill` with `skill_id: onboard`, `path: SKILL.md` and let it resume (it skips completed " +
-    "phases; if the in-progress step is the Business X-Ray, it hands off to `business-x-ray`, which " +
-    "resumes its own map rather than restarting). NEVER restart onboarding from scratch. If the user " +
+    `${resume}. NEVER restart onboarding from scratch. If the user ` +
     "came to do something specific, do their thing first and offer the resume once, at a natural pause."
   );
 }
@@ -228,7 +232,7 @@ async function main() {
       .join("; ");
     process.stdout.write(
       JSON.stringify({
-        hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: buildResumeNudge(bits) }
+        hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: buildResumeNudge(bits, xrayIsCurrent(unified)) }
       })
     );
     logEvent("resume-context-emitted", { src: "yaml" });
@@ -240,7 +244,7 @@ async function main() {
       .join("; ");
     process.stdout.write(
       JSON.stringify({
-        hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: buildResumeNudge(bits) }
+        hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: buildResumeNudge(bits, xrayIsCurrent({ onboarding: legacy })) }
       })
     );
     logEvent("resume-context-emitted", { src: "legacy" });

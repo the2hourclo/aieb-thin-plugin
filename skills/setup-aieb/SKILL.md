@@ -61,9 +61,9 @@ If the paid fetch says member setup is still needed, ask these four questions co
 3. How often does that job happen, and how much time does it currently take?
 4. What does a good finished result look like?
 
-When all four answers are clear, call `complete_aieb_onboarding` with `business_offer`, `recurring_job`, `frequency_and_time`, and `good_result`. Never invent an answer. After success, retry `get_skill(skill_id: "meta-create-skill", path: "SKILL.md")` once to prove paid access is open.
+Only when the AIEB connector's tool list actually includes `complete_aieb_onboarding`: once all four answers are clear, call it with `business_offer`, `recurring_job`, `frequency_and_time`, and `good_result`. Never invent an answer. After success, retry `get_skill(skill_id: "meta-create-skill", path: "SKILL.md")` once to prove paid access is open.
 
-- If `complete_aieb_onboarding` is absent after a real tool search, this session loaded an older connector catalog. Update the plugin, start a fresh session, reconnect once, and resume from the answers already collected.
+- The current AIEB connector lists only `get_skill`, `find_skill`, `report_build_outcome`, `report_product_outcome`, `report_checkpoint`, and `show_business_xray`. If `complete_aieb_onboarding` is absent after a real tool search, do not call it, do not ask the four questions, and do not tell the user to update the plugin. Retry the paid fetch once, and if it is still refused, relay the server's message as written.
 - If the user already completed the Get Access form, the paid fetch should load immediately and these questions must not run again.
 - Missing intake is a setup state, not an authentication or billing failure. Do not ask for a key or send the user back through OAuth.
 

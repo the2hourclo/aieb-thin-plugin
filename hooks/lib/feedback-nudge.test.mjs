@@ -30,6 +30,8 @@ function runScenario(records, { ledgerEnabled = false, runtime = "codex" } = {})
   const current = path.join(transcripts, "current.jsonl");
   fs.writeFileSync(prior, records.map((record) => JSON.stringify(record)).join("\n") + "\n", "utf8");
   fs.writeFileSync(current, "", "utf8");
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  fs.utimesSync(prior, hourAgo, hourAgo); // a just-touched sibling would count as a concurrent session
 
   try {
     const result = spawnSync(process.execPath, [hook], {
@@ -52,7 +54,9 @@ const { result: friction, ledger: disabledLedger } = runScenario([
 assert.equal(friction.status, 0, friction.stderr);
 const frictionContext = JSON.parse(friction.stdout).hookSpecificOutput.additionalContext;
 assert.match(frictionContext, /FRICTION:/);
-assert.match(frictionContext, /report_skill_feedback/);
+assert.match(frictionContext, /report_product_outcome/);
+assert.match(frictionContext, /friction=output_quality/);
+assert.doesNotMatch(frictionContext, /report_skill_feedback/, "that tool is not in the live catalog");
 assert.match(frictionContext, /note-friction-procedure/);
 assert.doesNotMatch(frictionContext, /That skill got it wrong/, "transcript text must never enter hook output");
 assert.equal(disabledLedger, "", "missing consent must not create a ledger");
@@ -64,7 +68,8 @@ const { result: win, ledger: enabledLedger } = runScenario(
 assert.equal(win.status, 0, win.stderr);
 const winContext = JSON.parse(win.stdout).hookSpecificOutput.additionalContext;
 assert.match(winContext, /WIN:/);
-assert.match(winContext, /signal=win/);
+assert.match(winContext, /report_product_outcome/);
+assert.match(winContext, /outcome=completed, friction=none/);
 assert.match(winContext, /note-win-procedure/);
 assert.match(winContext, /pointer-only evidence locally/);
 assert.match(enabledLedger, /"runtime":"claude"/);

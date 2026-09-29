@@ -1,7 +1,7 @@
 ---
 name: youtube-breakout-search
-description: Searches YouTube for breakout videos with high view-to-subscriber ratios. USE WHEN spawned by the youtube-strategy breakout-research workflow to find viral videos outperforming their channel size.
-tools: "*"
+description: Searches YouTube for breakout videos with high view-to-subscriber ratios. USE WHEN spawned by the youtube-strategy breakout-research workflow to find viral videos outperforming their channel size. Requires a YouTube MCP server the user has connected themselves; this plugin does not ship one.
+tools: ToolSearch, mcp__youtube__youtube_search, mcp__youtube__youtube_get_video, mcp__youtube__youtube_get_channel
 model: sonnet
 ---
 
@@ -34,7 +34,7 @@ This will load:
 - `mcp__youtube__youtube_get_video` - Get video details (views, duration)
 - `mcp__youtube__youtube_get_channel` - Get channel info (subscribers)
 
-**DO NOT proceed to Step 1 until you have successfully loaded these tools.**
+**DO NOT proceed to Step 1 until you have successfully loaded these tools.** If they cannot be loaded because no YouTube MCP server is connected, stop and return one line saying so, with `"breakoutVideos": []` in the JSON block. Never invent results.
 
 ---
 

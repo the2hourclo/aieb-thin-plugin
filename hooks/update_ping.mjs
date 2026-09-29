@@ -80,14 +80,21 @@ function versionLess(a, b) {
 }
 
 function installedVersion() {
-  const root = process.env.CLAUDE_PLUGIN_ROOT;
-  if (!root) return null;
-  try {
-    const raw = fs.readFileSync(path.join(root, ".claude-plugin", "plugin.json"), "utf8");
-    return JSON.parse(raw).version || null;
-  } catch {
-    return null;
+  const manifests = [
+    [process.env.CLAUDE_PLUGIN_ROOT, ".claude-plugin"],
+    [process.env.PLUGIN_ROOT, ".codex-plugin"]
+  ];
+  for (const [root, dir] of manifests) {
+    if (!root) continue;
+    try {
+      const raw = fs.readFileSync(path.join(root, dir, "plugin.json"), "utf8");
+      const version = JSON.parse(raw).version;
+      if (version) return version;
+    } catch {
+      // try the next runtime's manifest
+    }
   }
+  return null;
 }
 
 async function fetchRemoteVersions() {
