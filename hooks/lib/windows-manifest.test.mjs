@@ -15,7 +15,9 @@ assert.equal(manifest.hooks, "./hooks/hooks.json", "Codex manifest must explicit
 const handlers = Object.entries(hooks.hooks).flatMap(([event, groups]) =>
   groups.flatMap((group) => group.hooks.map((hook) => ({ event, ...hook })))
 );
-assert.equal(handlers.length, 6);
+assert.equal(handlers.length, 5);
+assert.equal(hooks.hooks.Stop, undefined, "the Stop outcome nudge is retired: nothing writes its marker on the remote connector");
+assert.ok(!fs.existsSync(path.join(root, "hooks", "report_nudge_stop.mjs")));
 
 for (const handler of handlers) {
   assert.equal(typeof handler.commandWindows, "string", `${handler.event} is missing commandWindows`);
@@ -26,8 +28,6 @@ for (const handler of handlers) {
 
 const roadmap = handlers.find((handler) => /roadmap_nudge\.mjs/.test(handler.commandWindows));
 assert.ok(roadmap, "roadmap Windows hook command is missing");
-const reportNudge = handlers.find((handler) => /report_nudge_stop\.mjs/.test(handler.commandWindows));
-assert.ok(reportNudge, "outcome/feedback Windows Stop hook command is missing");
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "aieb-codex-hook-test-"));
 const fixture = path.join(tempRoot, "workspace");
@@ -57,38 +57,10 @@ try {
   const response = JSON.parse(result.stdout);
   assert.equal(response.hookSpecificOutput.hookEventName, "SessionStart");
   assert.match(response.hookSpecificOutput.additionalContext, /roadmap/i);
-
-  const fakeHome = path.join(tempRoot, "home");
-  const reportState = path.join(fakeHome, ".aieb-mcp");
-  fs.mkdirSync(reportState, { recursive: true });
-  fs.writeFileSync(
-    path.join(reportState, "pending-report.json"),
-    JSON.stringify({ skill_id: "write", fetched_at: Date.now(), started: true, nudged: false }),
-    "utf8"
-  );
-  const stop = spawnSync(reportNudge.commandWindows, {
-    cwd: root,
-    shell: true,
-    encoding: "utf8",
-    input: JSON.stringify({ hook_event_name: "Stop", stop_hook_active: false }),
-    env: {
-      ...process.env,
-      HOME: fakeHome,
-      USERPROFILE: fakeHome,
-      PLUGIN_ROOT: root,
-      CLAUDE_PLUGIN_ROOT: root,
-      PLUGIN_DATA: pluginData
-    }
-  });
-  assert.equal(stop.status, 0, stop.stderr || "Windows Stop hook command failed");
-  const stopResponse = JSON.parse(stop.stdout);
-  assert.equal(stopResponse.decision, "block");
-  assert.match(stopResponse.reason, /report_product_outcome/);
-  assert.match(stopResponse.reason, /report_skill_feedback/);
 } finally {
   const resolvedTemp = path.resolve(tempRoot);
   const resolvedOsTemp = path.resolve(os.tmpdir()) + path.sep;
   if (resolvedTemp.startsWith(resolvedOsTemp)) fs.rmSync(resolvedTemp, { recursive: true, force: true });
 }
 
-console.log("windows-manifest.test: Codex executed SessionStart and Stop hook commands");
+console.log("windows-manifest.test: Codex executed the SessionStart hook command; Stop hook retired");
