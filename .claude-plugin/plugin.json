@@ -1,6 +1,7 @@
 {
   "name": "ai-employee-builder",
-  "version": "0.34.0",
+  "displayName": "AI Employee Builder - by Rashid",
+  "version": "0.34.1",
   "description": "Public AI Employee Builder shell: auto-routing skill stubs, remote OAuth, and an opt-in private local improvement ledger.",
   "author": {
     "name": "Rashid Khamis",

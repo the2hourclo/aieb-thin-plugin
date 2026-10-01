@@ -1,6 +1,6 @@
 {
   "name": "ai-employee-builder",
-  "version": "0.34.0",
+  "version": "0.34.1",
   "description": "Public AI Employee Builder shell: auto-routing skills, remote OAuth, and an opt-in private local improvement ledger across Codex, Claude Code, and Cowork.",
   "author": {
     "name": "Rashid Khamis",
@@ -20,7 +20,7 @@
   "mcpServers": "./.mcp.json",
   "hooks": "./hooks/hooks.json",
   "interface": {
-    "displayName": "AI Employee Builder",
+    "displayName": "AI Employee Builder - by Rashid",
     "shortDescription": "Connects Codex to the hosted AIEB MCP runtime.",
     "longDescription": "A public shell for AI Employee Builder on Codex. It contains portable setup guidance and a remote OAuth MCP connector while paid skill instructions are fetched from the licensed AIEB MCP server at runtime.",
     "developerName": "Chief Leverage Officer",
@@ -38,6 +38,8 @@
       "Connect my AIEB MCP license.",
       "Help me test the AIEB MCP."
     ],
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
     "brandColor": "#14B8A6"
   }
 }
