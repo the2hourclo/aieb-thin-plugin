@@ -129,7 +129,7 @@ Email OS              ➖ optional — not configured
 Repairs applied       1 of 2 offered
 ```
 
-Then one closing sentence: what (if anything) they should do next, in plain words. If something is still broken after the repairs, offer to send Rashid a problem report with the `report-a-problem` skill, and send nothing without their yes.
+Then one closing sentence: what (if anything) they should do next, in plain words. If something is still broken after the repairs, offer to send Rashid a problem report (the `report-a-problem` skill, or the connector's `report_problem` tool), and send nothing without their yes.
 
 ---
 
