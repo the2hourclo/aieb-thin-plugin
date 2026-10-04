@@ -129,8 +129,8 @@ Email OS              ➖ optional — not configured
 Repairs applied       1 of 2 offered
 ```
 
-Then one closing sentence: what (if anything) they should do next, in plain words.
+Then one closing sentence: what (if anything) they should do next, in plain words. If something is still broken after the repairs, offer to send Rashid a problem report with the `report-a-problem` skill, and send nothing without their yes.
 
 ---
 
-**Version:** 2.3 — a connector whose skill tools are set to Blocked is now diagnosed as a permissions fix, not an update (2026-09-26). Origin: in a claude.ai chat test, `get_skill` and `find_skill` were Blocked under the aieb connector's Tool permissions. Chat saw only the X-Ray viewer, and this skill told the member to update the plugin, which could not help. Previous v2.2 made setup checks distinguish connector, entitlement, and durable Cowork Project-folder readiness (2026-09-01).
+**Version:** 2.4 — a problem that survives the repairs now ends in an offer to report it (2026-10-04). Origin: Rashid wanted members' bugs reported from inside Claude instead of lost; this check is where an unfixable setup problem shows up first. Previous v2.3 — a connector whose skill tools are set to Blocked is now diagnosed as a permissions fix, not an update (2026-09-26). Origin: in a claude.ai chat test, `get_skill` and `find_skill` were Blocked under the aieb connector's Tool permissions. Chat saw only the X-Ray viewer, and this skill told the member to update the plugin, which could not help. Previous v2.2 made setup checks distinguish connector, entitlement, and durable Cowork Project-folder readiness (2026-09-01).

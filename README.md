@@ -26,6 +26,7 @@ The legacy `scripts/aieb-mcp-proxy.mjs` remains in this release only for rollbac
 
 - `skills/`: generated routing loaders. Each loader fetches its real instructions through `get_skill`; generated loaders are not hand-edited.
 - `skills/setup-aieb/`: connection and migration guidance for the remote OAuth connector.
+- `skills/report-a-problem/`: helps a member send Rashid a problem report. Claude drafts it in plain words, shows the exact text, and sends it through the connector's `report_problem` tool only after the member says yes. If the connection itself is broken, the member gets the drafted report to post in the community instead.
 - `commands/`: buyer-facing setup and workflow shortcuts.
 - `hooks/`: optional onboarding, roadmap, update, and retrospective nudges on hosts that support plugin hooks, plus the opt-in local Continuous Improvement Ledger collector.
 - `skill-telemetry/`: explicit structured feedback only; no automatic transcript capture.
