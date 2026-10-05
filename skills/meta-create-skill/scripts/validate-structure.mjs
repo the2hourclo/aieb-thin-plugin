@@ -62,72 +62,74 @@ export function readFrontmatter(source) {
   const typed = (value) => /^(?:~|null|true|false|yes|no|on|off|[-+]?[\d.][\w.:+-]*|[-+]?\.(?:inf|nan))$/i.test(value);
   const collection = (value) => /^(?:[&*!\[\]{}]|-(?:\s|$)|\?(?:\s|$))/.test(value);
   const skipped = new Set();
-  // Opaque collections include their entire subtree, including indentless lists
-  // and multiline flow closers. Never validate a collection item as a scalar.
+  // Read key spelling only; values of unconsumed fields are never decoded.
+  const keyPattern = /^( *)(?:([a-zA-Z_][\w-]*)|"((?:[^"\\]|\\.)*)"|'((?:[^']|'')*)'):(?:[ \t]+(.*)|$)/;
+  const keyOf = (match) => match[2] ?? (match[3] !== undefined ?
+    match[3].replace(/\\(["\\])/g, '$1') : match[4].replace(/''/g, "'"));
+  // Locate presentation boundaries only. Quotes and flow brackets can cross
+  // block boundaries; block scalars own all sufficiently indented physical
+  // lines (including comments). No scalar types or collection items are read.
   function skipCollection(at, parent, initial = '') {
-    // Flow collections may put mapping keys at column zero. Find their actual
-    // closer first; only malformed/unclosed flows use block-boundary recovery.
-    if (/^(?:[&!]\S+\s+)*[\[{]/.test(initial)) {
+    function tokenEnd(start, text) {
+      text = text.trimStart().replace(/^(?:[&!]\S+(?:[ \t]+|$))*/, '');
+      if (!/^["'[{]/.test(text)) return start;
       const stack = []; let quote = null, tokenStart = true;
-      for (let line = at - 1; line < lines.length; line++) {
-        const text = line === at - 1 ? initial : lines[line];
-        for (let k = 0; k < text.length; k++) {
-          const char = text[k];
+      const quoted = /^["']/.test(text);
+      for (let line = start - 1; line < lines.length; line++) {
+        const physical = line === start - 1 ? text : lines[line];
+        for (let k = 0; k < physical.length; k++) {
+          const char = physical[k];
           if (quote) {
             if (quote === '"' && char === '\\') { k++; continue; }
             if (char === quote) {
-              if (quote === "'" && text[k + 1] === "'") k++;
-              else quote = null;
+              if (quote === "'" && physical[k + 1] === "'") k++;
+              else { quote = null; if (quoted && !stack.length) return line + 1; }
             }
-          } else if (char === '#' && (k === 0 || /\s/.test(text[k - 1]))) break;
+          } else if (char === '#' && (k === 0 || /\s/.test(physical[k - 1]))) break;
           else if ((char === '"' || char === "'") && tokenStart) { quote = char; tokenStart = false; }
-          else if (char === '[' || char === '{') { stack.push(char); tokenStart = true; }
+          else if ((char === '[' || char === '{') && tokenStart) { stack.push(char); tokenStart = true; }
           else if (char === ']' || char === '}') {
             if (stack.pop() !== (char === ']' ? '[' : '{')) unsupported = true;
-            if (!stack.length) {
-              if (comment(text.slice(k + 1)).trim()) unsupported = true;
-              return line + 1;
-            }
+            if (!stack.length) return line + 1;
             tokenStart = false;
           } else if (char === ',' || char === ':') tokenStart = true;
           else if (!/\s/.test(char)) tokenStart = false;
         }
       }
-      unsupported = true; // No flow closer: its extent is uncertain.
+      cannotRead('extent'); // No closer: do not guess across listing fields.
+      return start;
     }
-    let blockParent = null;
+    function valueEnd(start, width, text) {
+      const bare = comment(text).trimStart().replace(/^(?:[&!]\S+(?:[ \t]+|$))*/, '');
+      if (/^[|>]/.test(bare)) {
+        const indicator = bare.match(/^[|>][+-]?([1-9])/);
+        let blockWidth = indicator ? width + Number(indicator[1]) : null;
+        let end = start;
+        while (end < lines.length && !lines[end].trim()) end++;
+        if (blockWidth === null) blockWidth = Math.max(width + 1, end < lines.length ? indent(lines[end]) : width + 1);
+        while (start < lines.length && (!lines[start].trim() || indent(lines[start]) >= blockWidth)) start++;
+        return start;
+      }
+      if (bare && !/^["'[{]/.test(bare)) {
+        // Plain scalar continuations may begin with quotes, brackets or tags.
+        // They remain plain text; opening a token there would invent an extent.
+        while (start < lines.length && (ignored(lines[start]) || indent(lines[start]) > width)) start++;
+        return start;
+      }
+      return tokenEnd(start, text);
+    }
+    at = valueEnd(at, parent, initial);
     while (at < lines.length) {
-      if (blockParent !== null) {
-        if (ignored(lines[at]) || indent(lines[at]) > blockParent) { at++; continue; }
-        blockParent = null;
-      }
-      if (!ignored(lines[at]) && indent(lines[at]) <= parent &&
-          !/^-(?:\s|$)/.test(lines[at].trimStart())) break;
-      const item = lines[at].match(/^ *- +(.+)$/);
-      if (item && /^(?:[&!]\S+\s+)*[\[{]/.test(item[1])) {
-        at = skipCollection(at + 1, indent(lines[at]), item[1]); continue;
-      }
-      if (item && /^[|>]/.test(comment(item[1]))) blockParent = indent(lines[at]);
-      if (item && /^["']/.test(item[1])) {
-        at = scalar(item[1], indent(lines[at]), at + 1, 'collection')[1]; continue;
-      }
-      const nested = lines[at].match(/^( *)(?:- +)?[\w-]+: +(.+)$/);
-      if (nested && /^(?:[&!]\S+\s+)*[\[{]/.test(nested[2])) {
-        at = skipCollection(at + 1, indent(lines[at]), nested[2]); continue;
-      }
-      if (nested && /^["']/.test(nested[2])) {
-        at = scalar(nested[2], indent(lines[at]), at + 1, 'collection')[1]; continue;
-      }
-      if (nested && /^[|>]/.test(comment(nested[2]))) {
-        const dash = lines[at].trimStart().match(/^- +/);
-        blockParent = indent(lines[at]) + (dash ? dash[0].length : 0);
-      }
-      // A plain sequence item cannot own an indented mapping.
-      if (/^ *- [^|>{[&*!'"].*$/.test(lines[at]) && !/:\s/.test(lines[at])) {
-        let next = at + 1; while (next < lines.length && ignored(lines[next])) next++;
-        if (next < lines.length && indent(lines[next]) > indent(lines[at]) && /^ *[\w-]+:/.test(lines[next])) unsupported = true;
-      }
-      at++;
+      if (ignored(lines[at])) { at++; continue; }
+      const width = indent(lines[at]), text = lines[at].trimStart();
+      if (width < parent || (width === parent && !/^-(?:\s|$)/.test(text))) break;
+      // Compact sequence mappings have their own indentation after the dash.
+      const dash = text.match(/^(?:- +)+/);
+      const payload = dash ? text.slice(dash[0].length) : text;
+      const match = payload.match(keyPattern);
+      const initial = match ? (match[5] ?? '') : payload;
+      const ownerWidth = width + (match && dash ? dash[0].length : 0);
+      at = valueEnd(at + 1, ownerWidth, initial);
     }
     return at;
   }
@@ -286,7 +288,7 @@ export function readFrontmatter(source) {
   }
   function flowMetadata(text) {
     const result = Object.create(null);
-    let quote = null, level = 0, part = '', parts = [];
+    let quote = null, level = 0, part = '', parts = [], tokenStart = true;
     for (let k = 1; k < text.length - 1; k++) {
       const char = text[k];
       if (quote) {
@@ -299,21 +301,21 @@ export function readFrontmatter(source) {
       } else if (char === '#' && (k === 0 || /\s/.test(text[k - 1]))) {
         while (k < text.length && text[k] !== '\n') k++;
         part += '\n';
-      } else if (char === '"' || char === "'") { quote = char; part += char; }
-      else if (char === '[' || char === '{') { level++; part += char; }
-      else if (char === ']' || char === '}') { level--; part += char; }
-      else if (char === ',' && level === 0) { parts.push(part); part = ''; }
-      else part += char;
+      } else if ((char === '"' || char === "'") && tokenStart) { quote = char; part += char; tokenStart = false; }
+      else if ((char === '[' || char === '{') && tokenStart) { level++; part += char; tokenStart = true; }
+      else if (char === ']' || char === '}') { level--; part += char; tokenStart = false; }
+      else if (char === ',' && level === 0) { parts.push(part); part = ''; tokenStart = true; }
+      else { part += char; if (char === ',' || char === ':') tokenStart = true; else if (!/\s/.test(char)) tokenStart = false; }
     }
     parts.push(part);
     for (const entry of parts.filter(part => part.trim())) {
-      const match = entry.trim().match(/^([a-zA-Z_][\w-]*):(?:\s|$)([\s\S]*)/);
+      const match = entry.trim().replaceAll('\n', ' ').replace(/^((?:"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')):(?=\S)/, '$1: ').match(keyPattern);
       if (!match) { cannotRead('metadata'); continue; }
-      const [, key, value] = match;
-      if (Object.hasOwn(result, key)) cannotRead('metadata');
+      const key = keyOf(match), value = match[5] ?? '';
+      if (Object.hasOwn(result, key) && ['stakes', 'freedom', 'weight', 'models'].includes(key)) cannotRead('metadata');
       result[key] = undefined;
       if (!['stakes', 'freedom', 'weight', 'models'].includes(key) ||
-          (key !== 'stakes' && collection(value.trim()))) skipped.add(`metadata.${key}`);
+          (key !== 'stakes' && collection(value.trim()) && !(key === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(value.trim()) && !value.trim().slice(1, -1).split(',').some(item => typed(item.trim()))))) skipped.add(`metadata.${key}`);
       else result[key] = scalar(value.trim(), 0, lines.length, key, 'metadata')[0];
     }
     return result;
@@ -331,19 +333,21 @@ export function readFrontmatter(source) {
           at = skipCollection(next + 1, parent, lines[next].trimStart().slice(2)); continue;
         }
       }
-      const match = lines[at].match(/^ *([a-zA-Z_][\w-]*):(?:[ \t]+(.*)|$)/);
+      const match = lines[at].match(keyPattern);
       if (indent(lines[at]) !== parent || !match || /\t/.test(lines[at].slice(0, indent(lines[at]) + 1))) {
         unsupported = true;
         if (owner) cannotRead(owner);
         at++; continue;
       }
-      const key = match[1], initial = (match[2] ?? '').trimStart();
+      const key = keyOf(match), initial = (match[5] ?? '').trimStart();
       at++;
       const valueStart = at;
-      if (Object.hasOwn(result, key)) cannotRead(owner ?? key);
+      if (Object.hasOwn(result, key) && (depth === 0 ? ['name', 'description', 'when_to_use', 'metadata'].includes(key) : ['stakes', 'freedom', 'weight', 'models'].includes(key))) cannotRead(owner ?? key);
       let next = at;
       while (next < lines.length && ignored(lines[next])) {
-        if (!comment(initial) && !lines[next].trim() && /\t/.test(lines[next])) bad(owner ?? key);
+        if (!comment(initial) && !lines[next].trim() && /\t/.test(lines[next]) &&
+            (depth === 0 ? ['name', 'description', 'when_to_use', 'metadata'].includes(key) :
+              ['stakes', 'freedom', 'weight', 'models'].includes(key))) bad(owner ?? key);
         next++;
       }
       if (depth === 0 && key === 'metadata' && /^\{/.test(initial)) {
@@ -352,27 +356,19 @@ export function readFrontmatter(source) {
         result[key] = flowMetadata(text.slice(0, text.lastIndexOf('}') + 1)); continue;
       }
       const opaque = depth === 0 ? !['name', 'description', 'when_to_use', 'metadata'].includes(key) :
-        owner === 'metadata' && key !== 'stakes';
-      const blockCollection = (!comment(initial) || /^(?:[&!]\S+)$/.test(initial)) && next < lines.length &&
-        ((indent(lines[next]) > parent && /^(?:[\w-]+:|[?](?:\s|$)|-(?:\s|$))/.test(lines[next].trimStart())) ||
-         (indent(lines[next]) === parent && /^-(?:\s|$)/.test(lines[next].trimStart())));
+        !['stakes', 'freedom', 'weight', 'models'].includes(key);
       const supportedModels = key === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(comment(initial)) &&
         !comment(initial).slice(1, -1).split(',').some(item => typed(item.trim()));
-      if (opaque && /^\*[\w-]+$/.test(initial)) {
-        result[key] = undefined; skipped.add(owner ? `${owner}.${key}` : key); continue;
-      }
-      if (opaque && !supportedModels && (blockCollection || /^(?:[&!]\S+\s+)*[\[{]/.test(initial) ||
-          (/^(?:[&!]\S+)$/.test(initial) && blockCollection))) {
+      // Retain the existing advisory profile policy for non-text collections.
+      const profileCollection = depth > 0 && key !== 'stakes' && !supportedModels &&
+        (collection(initial) || (!comment(initial) && next < lines.length &&
+          (keyPattern.test(lines[next]) || /^-(?:\s|$)/.test(lines[next].trimStart()))));
+      if (opaque || profileCollection) {
         result[key] = undefined; skipped.add(owner ? `${owner}.${key}` : key);
         at = skipCollection(at, parent, initial); continue;
       }
-      if (opaque && /^(?:[&!]\S+\s+)+/.test(initial)) {
-        const value = initial.replace(/^(?:[&!]\S+\s+)+/, '');
-        result[key] = undefined; skipped.add(owner ? `${owner}.${key}` : key);
-        at = scalar(value, parent, at, key, owner ?? key)[1]; continue;
-      }
       if (!comment(initial) && next < lines.length && indent(lines[next]) > parent &&
-          /^ *(?:[a-zA-Z_][\w-]*:|\? +[a-zA-Z_][\w-]*$)/.test(lines[next])) {
+          (keyPattern.test(lines[next]) || /^ *\? +[a-zA-Z_][\w-]*$/.test(lines[next]))) {
         if (depth >= 1 || ['name', 'description'].includes(key)) {
           cannotRead(owner ?? key); result[key] = undefined; at = skipCollection(next, parent);
         }
