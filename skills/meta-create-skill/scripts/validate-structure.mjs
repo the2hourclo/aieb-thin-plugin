@@ -21,7 +21,8 @@
 //  12. REVIEW BP20 backslash paths (Windows fences and absolute drives exempt)
 //
 // Usage: node validate-structure.mjs <skill-dir>
-// Prints numbered FAILs or `VERDICT: CLEAN`. Exit 1 on any FAIL.
+// Prints numbered FAILs, `VERDICT: REVIEW` for unsupported YAML, or `VERDICT: CLEAN`.
+// Exit 1 on any FAIL. Unsupported syntax is advisory and never claims CLEAN.
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, basename, posix, resolve } from 'node:path';
@@ -29,6 +30,8 @@ import { fileURLToPath } from 'node:url';
 
 // A deliberately bounded YAML reader. Unsupported syntax makes frontmatter
 // checks advisory rather than guessing at values and rejecting a member skill.
+// Origin: 2026-10-05 Astra ship-review; PyYAML differential coverage closes
+// key-like quote continuations, unclosed fields, and plain-scalar folding gaps.
 export function readFrontmatter(source) {
   const lines = source.replace(new RegExp(`^${String.fromCharCode(0xfeff)}`), '').split(/\r?\n/);
   if (lines.at(-1) === '') lines.pop(); // A terminator is not an extra blank line.
@@ -45,6 +48,8 @@ export function readFrontmatter(source) {
   const indent = (line) => line.match(/^ */)[0].length;
   const ignored = (line) => !line.trim() || line.trimStart().startsWith('#');
   const comment = (value) => value.replace(/(?:^|[ \t]+)#.*$/, '').trimEnd();
+  // YAML's implicit non-string scalars are outside skill text/profile fields.
+  const typed = (value) => /^(?:~|null|true|false|yes|no|on|off|[-+]?[\d.][\w.:+-]*|[-+]?\.(?:inf|nan))$/i.test(value);
   function scalar(initial, parent, at, field) {
     let value = comment(initial);
     const block = value.match(/^([|>])(?:(?:([+-])([1-9])?)|(?:([1-9])([+-])?))?$/);
@@ -75,18 +80,17 @@ export function readFrontmatter(source) {
     if (/^['"]/.test(initial)) {
       const quote = initial[0];
       let text = initial.slice(1).trimEnd(), out = '', k = 0, continuedEscape = false;
-      const endsQuote = (line) => indent(line) <= parent && /^(?:---$|[a-zA-Z_][\w-]*:)/.test(line);
       const escapes = { '0': 0, a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13,
         e: 27, ' ': 32, '"': 34, '/': 47, '\\': 92, N: 0x85, _: 0xa0, L: 0x2028, P: 0x2029 };
       while (true) {
         if (k >= text.length) {
-          if (at >= lines.length || endsQuote(lines[at])) {
+          if (at >= lines.length) {
             unclosed.add(field);
             return [out, at];
           }
           let blanks = 0;
           while (at < lines.length && !lines[at].trim()) { blanks++; at++; }
-          if (at >= lines.length || endsQuote(lines[at])) {
+          if (at >= lines.length) {
             unclosed.add(field);
             return [out, at];
           }
@@ -119,22 +123,33 @@ export function readFrontmatter(source) {
     // models is the existing profile's expected list position. Keep its simple
     // flow-list form; other collections are outside this reader's contract.
     if (field === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(value)) {
-      return [value.slice(1, -1).split(',').map(item => item.trim()), at];
+      const items = value.slice(1, -1).split(',').map(item => item.trim());
+      if (items.some(typed)) cannotRead(field);
+      return [items, at];
     }
     if (/^(?:[&*!\[\]{}|>@`]|-(?:\s|$)|\?(?:\s|$))/.test(value) || /:\s/.test(value)) {
       cannotRead(field);
       return [undefined, at];
     }
     const parts = [value.trim()];
+    let blanks = 0, commented = comment(initial) !== initial.trimEnd();
+    if (typed(value)) cannotRead(field);
     while (at < lines.length) {
-      if (ignored(lines[at])) { at++; continue; }
+      if (ignored(lines[at])) {
+        if (lines[at].trim()) commented = true;
+        else blanks++;
+        at++; continue;
+      }
       if (indent(lines[at]) <= parent) break;
+      if (commented) cannotRead(field);
       const continuation = comment(lines[at].trim());
       if (/^(?:-(?:\s|$)|[\w-]+:\s)/.test(continuation)) { cannotRead(field); break; }
-      parts.push(continuation);
+      parts.push((blanks ? '\n'.repeat(blanks) : ' ') + continuation);
+      blanks = 0;
+      commented = continuation !== lines[at].trim();
       at++;
     }
-    return [parts.filter(Boolean).join(' '), at];
+    return [parts.join(''), at];
   }
   function mapping(at, parent, depth) {
     const result = Object.create(null);
@@ -195,6 +210,7 @@ if (lines[0] !== '---') {
 }
 const fm = fmEnd > 0 ? lines.slice(1, fmEnd) : [];
 const parsed = readFrontmatter(fm.join('\n') + '\n');
+for (const field of parsed.unclosed) fail(`frontmatter: unclosed quote in ${field}`);
 if (parsed.unsupported) review("frontmatter uses YAML the checker can't read; check it by hand");
 const scalar = (field) => !parsed.unreadable.has(field) && typeof parsed.values[field] === 'string' ? parsed.values[field] : null;
 if (scalar('name') === null && !parsed.unsupported) fail('frontmatter: no `name:` field');
@@ -214,9 +230,6 @@ if (description === null) {
   if (!parsed.unsupported) fail('frontmatter: no `description:` field');
 } else {
   let desc = description;
-  if (parsed.unclosed.has('description')) {
-    fail('frontmatter: description opens with `"` but never closes it');
-  }
   if (!desc.trim()) fail('description: must be non-empty (BP4)');
   if (xmlTag.test(desc)) fail('description: XML tags are not allowed (BP4)');
   if (desc.length > 1024) {
@@ -358,7 +371,8 @@ function report() {
   if (fails.length === 0) {
     console.log(`validate-structure: ${name} — frontmatter ok, description within cap, routing first, ${wfFiles?.length ?? 0} workflows all routed, no stray fence headings, body ${typeof bodyLines !== 'undefined' ? bodyLines : '?'} lines within budget.`);
     reviews.forEach((note) => console.log(`REVIEW: ${note}`));
-    console.log(`VERDICT: CLEAN${reviews.length ? ` (${reviews.length} REVIEW notes)` : ''}`);
+    console.log(parsed.unsupported ? 'VERDICT: REVIEW (unsupported YAML; validate with a YAML parser)' :
+      `VERDICT: CLEAN${reviews.length ? ` (${reviews.length} REVIEW notes)` : ''}`);
     process.exit(0);
   }
   console.log(`validate-structure: ${name} — ${fails.length} FAIL(S)`);
