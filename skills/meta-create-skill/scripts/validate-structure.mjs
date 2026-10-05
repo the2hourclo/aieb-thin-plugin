@@ -60,10 +60,35 @@ if (!/^name:\s*\S+/m.test(fmText)) fail('frontmatter: no `name:` field');
 
 // Read the scalar forms used by skill frontmatter, including quoted and block
 // descriptions. Do not count YAML quoting or block indicators as content.
-function scalar(field, decode = true) {
-  const match = fmText.match(new RegExp(`^${field}:[ \\t]*([^\\n]*(?:\\n(?![a-zA-Z_-]+:)[^\\n]*)*)`, 'm'));
-  if (!match) return null;
-  let value = match[1].trim();
+function stripScalarComments(source) {
+  // Only a scalar's opening quote selects quoted style; quotes in plain text
+  // are content. Quoted scalars can span lines and escape their closing quote.
+  let quote = /^["']/.test(source) ? source[0] : null;
+  let result = '';
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i];
+    if (quote) {
+      result += char;
+      if (i === 0) continue;
+      if (quote === '"' && char === '\\') result += source[++i] ?? '';
+      else if (char === quote) {
+        if (quote === "'" && source[i + 1] === "'") result += source[++i];
+        else quote = null;
+      }
+    } else if (char === '#' && (i === 0 || /\s/.test(source[i - 1]))) {
+      while (i < source.length && source[i] !== '\n') i++;
+      if (i < source.length) result += '\n';
+    } else result += char;
+  }
+  return result.split('\n').map((line) => line.trimEnd()).join('\n').trim();
+}
+function decodeScalar(source, decode = true) {
+  let value = source.trim();
+  const headerEnd = value.indexOf('\n');
+  const header = stripScalarComments(headerEnd < 0 ? value : value.slice(0, headerEnd));
+  const block = /^[>|][+-]?$/.test(header);
+  // Block content is text, including lines beginning with #.
+  value = block ? header + (headerEnd < 0 ? '' : value.slice(headerEnd)) : stripScalarComments(value);
   if (!decode) return value;
   if (/^[>|][+-]?(?:\n|$)/.test(value)) {
     const folded = value[0] === '>';
@@ -75,6 +100,10 @@ function scalar(field, decode = true) {
     value = value.slice(1, -1).replace(/''/g, "'").replace(/\s*\n\s*/g, ' ');
   }
   return value;
+}
+function scalar(field, decode = true) {
+  const match = fmText.match(new RegExp(`^${field}:[ \\t]*([^\\n]*(?:\\n(?![a-zA-Z_-]+:)[^\\n]*)*)`, 'm'));
+  return match ? decodeScalar(match[1], decode) : null;
 }
 const xmlTag = /<\/?[a-zA-Z][\w:.-]*(?:\s[^<>]*)?\s*\/?>/;
 const skillName = scalar('name');
@@ -110,9 +139,9 @@ if (description === null) {
 }
 
 // Profile guidance is advisory and independent of description scalar parsing.
-const metadataBlock = fmText.match(/^metadata:[ \t]*\n((?:[ \t]+[^\n]*(?:\n|$))*)/m)?.[1] ?? '';
+const metadataBlock = fmText.match(/^metadata:[ \t]*(?:#[^\n]*)?\n((?:(?:[ \t]+[^\n]*|#[^\n]*)(?:\n|$))*)/m)?.[1] ?? '';
 const profile = Object.fromEntries([...metadataBlock.matchAll(/^  (stakes|freedom|weight|models):[ \t]*(.*)$/gm)]
-  .map((match) => [match[1], match[2].trim().replace(/^['"]|['"]$/g, '')]));
+  .map((match) => [match[1], decodeScalar(match[2])]));
 if (!['stakes', 'freedom', 'weight', 'models'].every((key) => Object.hasOwn(profile, key))) {
   review("record the skill's profile in metadata (stakes, freedom, weight, models)");
 }
