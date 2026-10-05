@@ -60,8 +60,95 @@ export function readFrontmatter(source) {
   const comment = (value) => value.replace(/(?:^|[ \t]+)#.*$/, '').trimEnd();
   // YAML's implicit non-string scalars are outside skill text/profile fields.
   const typed = (value) => /^(?:~|null|true|false|yes|no|on|off|[-+]?[\d.][\w.:+-]*|[-+]?\.(?:inf|nan))$/i.test(value);
-  function scalar(initial, parent, at, field) {
+  const collection = (value) => /^(?:[&*!\[\]{}]|-(?:\s|$)|\?(?:\s|$))/.test(value);
+  const skipped = new Set();
+  // Opaque collections include their entire subtree, including indentless lists
+  // and multiline flow closers. Never validate a collection item as a scalar.
+  function skipCollection(at, parent, initial = '') {
+    // Flow collections may put mapping keys at column zero. Find their actual
+    // closer first; only malformed/unclosed flows use block-boundary recovery.
+    if (/^(?:[&!]\S+\s+)*[\[{]/.test(initial)) {
+      const stack = []; let quote = null, tokenStart = true;
+      for (let line = at - 1; line < lines.length; line++) {
+        const text = line === at - 1 ? initial : lines[line];
+        for (let k = 0; k < text.length; k++) {
+          const char = text[k];
+          if (quote) {
+            if (quote === '"' && char === '\\') { k++; continue; }
+            if (char === quote) {
+              if (quote === "'" && text[k + 1] === "'") k++;
+              else quote = null;
+            }
+          } else if (char === '#' && (k === 0 || /\s/.test(text[k - 1]))) break;
+          else if ((char === '"' || char === "'") && tokenStart) { quote = char; tokenStart = false; }
+          else if (char === '[' || char === '{') { stack.push(char); tokenStart = true; }
+          else if (char === ']' || char === '}') {
+            if (stack.pop() !== (char === ']' ? '[' : '{')) unsupported = true;
+            if (!stack.length) {
+              if (comment(text.slice(k + 1)).trim()) unsupported = true;
+              return line + 1;
+            }
+            tokenStart = false;
+          } else if (char === ',' || char === ':') tokenStart = true;
+          else if (!/\s/.test(char)) tokenStart = false;
+        }
+      }
+      unsupported = true; // No flow closer: its extent is uncertain.
+    }
+    let blockParent = null;
+    while (at < lines.length) {
+      if (blockParent !== null) {
+        if (ignored(lines[at]) || indent(lines[at]) > blockParent) { at++; continue; }
+        blockParent = null;
+      }
+      if (!ignored(lines[at]) && indent(lines[at]) <= parent &&
+          !/^-(?:\s|$)/.test(lines[at].trimStart())) break;
+      const item = lines[at].match(/^ *- +(.+)$/);
+      if (item && /^(?:[&!]\S+\s+)*[\[{]/.test(item[1])) {
+        at = skipCollection(at + 1, indent(lines[at]), item[1]); continue;
+      }
+      if (item && /^[|>]/.test(comment(item[1]))) blockParent = indent(lines[at]);
+      if (item && /^["']/.test(item[1])) {
+        at = scalar(item[1], indent(lines[at]), at + 1, 'collection')[1]; continue;
+      }
+      const nested = lines[at].match(/^( *)(?:- +)?[\w-]+: +(.+)$/);
+      if (nested && /^(?:[&!]\S+\s+)*[\[{]/.test(nested[2])) {
+        at = skipCollection(at + 1, indent(lines[at]), nested[2]); continue;
+      }
+      if (nested && /^["']/.test(nested[2])) {
+        at = scalar(nested[2], indent(lines[at]), at + 1, 'collection')[1]; continue;
+      }
+      if (nested && /^[|>]/.test(comment(nested[2]))) {
+        const dash = lines[at].trimStart().match(/^- +/);
+        blockParent = indent(lines[at]) + (dash ? dash[0].length : 0);
+      }
+      // A plain sequence item cannot own an indented mapping.
+      if (/^ *- [^|>{[&*!'"].*$/.test(lines[at]) && !/:\s/.test(lines[at])) {
+        let next = at + 1; while (next < lines.length && ignored(lines[next])) next++;
+        if (next < lines.length && indent(lines[next]) > indent(lines[at]) && /^ *[\w-]+:/.test(lines[next])) unsupported = true;
+      }
+      at++;
+    }
+    return at;
+  }
+  function scalar(initial, parent, at, field, owner = field) {
+    const cannotRead = () => { unsupported = true; unreadable.add(owner); };
+    const bad = () => { cannotRead(); invalid.add(owner); };
+    const markUnclosed = () => {
+      unclosed.add(owner);
+      if (!['name', 'description'].includes(owner)) cannotRead();
+    };
     let value = comment(initial);
+    // Retain the profile's supported, single-line models list.
+    if (field === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(value)) {
+      const items = value.slice(1, -1).split(',').map(item => item.trim());
+      if (items.some(typed)) cannotRead(field);
+      return [items, at];
+    }
+    if (collection(value)) {
+      cannotRead(field);
+      return [undefined, skipCollection(at, parent, value)];
+    }
     const block = value.match(/^([|>])(?:(?:([+-])([1-9])?)|(?:([1-9])([+-])?))?$/);
     if (/^[|>]/.test(value) && !block) bad(field);
     if (block) {
@@ -107,19 +194,36 @@ export function readFrontmatter(source) {
     }
     if (/^['"]/.test(initial)) {
       const quote = initial[0];
+      const closesAhead = (from) => {
+        for (let line = from; line < lines.length; line++) {
+          const text = lines[line];
+          for (let k = 0; k < text.length; k++) {
+            if (quote === '"' && text[k] === '\\') { k++; continue; }
+            if (text[k] !== quote) continue;
+            if (quote === "'" && text[k + 1] === "'") { k++; continue; }
+            return !comment(text.slice(k + 1)).trim();
+          }
+        }
+        return false;
+      };
       let text = quotedTail(initial.slice(1), quote), out = '', k = 0, continuedEscape = false;
       const escapes = { '0': 0, a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13,
         e: 27, ' ': 32, '"': 34, '/': 47, '\\': 92, N: 0x85, _: 0xa0, L: 0x2028, P: 0x2029 };
       while (true) {
         if (k >= text.length) {
           if (at >= lines.length) {
-            unclosed.add(field);
+            markUnclosed();
             return [out, at];
           }
           let blanks = 0;
           while (at < lines.length && !lines[at].trim()) { blanks++; at++; }
           if (at >= lines.length) {
-            unclosed.add(field);
+            markUnclosed();
+            return [out, at];
+          }
+          // Recover listing fields after an unrelated broken quoted value.
+          if (!['name', 'description'].includes(owner) && /^(?:name|description):(?:\s|$)/.test(lines[at]) && !closesAhead(at)) {
+            markUnclosed();
             return [out, at];
           }
           out += blanks ? '\n'.repeat(blanks) : continuedEscape ? '' : ' ';
@@ -148,13 +252,6 @@ export function readFrontmatter(source) {
         } else out += char;
       }
     }
-    // models is the existing profile's expected list position. Keep its simple
-    // flow-list form; other collections are outside this reader's contract.
-    if (field === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(value)) {
-      const items = value.slice(1, -1).split(',').map(item => item.trim());
-      if (items.some(typed)) cannotRead(field);
-      return [items, at];
-    }
     if (/^[@`]/.test(value) || (!/^[&*!\[\]{}]/.test(value) && /:\s/.test(value)) || /\t/.test(value)) bad(field);
     if (/^(?:[&*!\[\]{}|>@`]|-(?:\s|$)|\?(?:\s|$))/.test(value) || /:\s/.test(value)) {
       cannotRead(field);
@@ -173,6 +270,10 @@ export function readFrontmatter(source) {
       if (indent(lines[at]) <= parent) break;
       if (commented && parts.length) bad(field);
       const continuation = comment(lines[at].trim());
+      if (collection(continuation)) {
+        cannotRead(field);
+        return [undefined, skipCollection(at + 1, parent, continuation)];
+      }
       if (/\t|:\s/.test(continuation)) bad(field);
       if (/^(?:-(?:\s|$)|[\w-]+:\s)/.test(continuation)) { cannotRead(field); break; }
       parts.push((parts.length ? (blanks ? '\n'.repeat(blanks) : ' ') : '') + continuation);
@@ -183,34 +284,105 @@ export function readFrontmatter(source) {
     if (!parts.length) cannotRead(field); // YAML null is outside text fields.
     return [parts.join(''), at];
   }
-  function mapping(at, parent, depth) {
+  function flowMetadata(text) {
+    const result = Object.create(null);
+    let quote = null, level = 0, part = '', parts = [];
+    for (let k = 1; k < text.length - 1; k++) {
+      const char = text[k];
+      if (quote) {
+        part += char;
+        if (quote === '"' && char === '\\') part += text[++k] ?? '';
+        else if (char === quote) {
+          if (quote === "'" && text[k + 1] === "'") part += text[++k];
+          else quote = null;
+        }
+      } else if (char === '#' && (k === 0 || /\s/.test(text[k - 1]))) {
+        while (k < text.length && text[k] !== '\n') k++;
+        part += '\n';
+      } else if (char === '"' || char === "'") { quote = char; part += char; }
+      else if (char === '[' || char === '{') { level++; part += char; }
+      else if (char === ']' || char === '}') { level--; part += char; }
+      else if (char === ',' && level === 0) { parts.push(part); part = ''; }
+      else part += char;
+    }
+    parts.push(part);
+    for (const entry of parts.filter(part => part.trim())) {
+      const match = entry.trim().match(/^([a-zA-Z_][\w-]*):(?:\s|$)([\s\S]*)/);
+      if (!match) { cannotRead('metadata'); continue; }
+      const [, key, value] = match;
+      if (Object.hasOwn(result, key)) cannotRead('metadata');
+      result[key] = undefined;
+      if (!['stakes', 'freedom', 'weight', 'models'].includes(key) ||
+          (key !== 'stakes' && collection(value.trim()))) skipped.add(`metadata.${key}`);
+      else result[key] = scalar(value.trim(), 0, lines.length, key, 'metadata')[0];
+    }
+    return result;
+  }
+  function mapping(at, parent, depth, owner) {
     const result = Object.create(null);
     while (at < lines.length) {
       if (ignored(lines[at])) { at++; continue; }
       if (indent(lines[at]) < parent) break;
+      const explicit = lines[at].match(/^ *\? +([a-zA-Z_][\w-]*)$/);
+      if (explicit && indent(lines[at]) === parent) {
+        let next = at + 1; while (next < lines.length && ignored(lines[next])) next++;
+        if (next < lines.length && indent(lines[next]) === parent && /^: +/.test(lines[next].trimStart())) {
+          result[explicit[1]] = undefined; skipped.add(owner ? `${owner}.${explicit[1]}` : explicit[1]);
+          at = skipCollection(next + 1, parent, lines[next].trimStart().slice(2)); continue;
+        }
+      }
       const match = lines[at].match(/^ *([a-zA-Z_][\w-]*):(?:[ \t]+(.*)|$)/);
       if (indent(lines[at]) !== parent || !match || /\t/.test(lines[at].slice(0, indent(lines[at]) + 1))) {
-        unsupported = true; at++; continue;
+        unsupported = true;
+        if (owner) cannotRead(owner);
+        at++; continue;
       }
       const key = match[1], initial = (match[2] ?? '').trimStart();
       at++;
       const valueStart = at;
-      if (Object.hasOwn(result, key)) cannotRead(key);
+      if (Object.hasOwn(result, key)) cannotRead(owner ?? key);
       let next = at;
       while (next < lines.length && ignored(lines[next])) {
-        if (!comment(initial) && !lines[next].trim() && /\t/.test(lines[next])) bad(key);
+        if (!comment(initial) && !lines[next].trim() && /\t/.test(lines[next])) bad(owner ?? key);
         next++;
       }
+      if (depth === 0 && key === 'metadata' && /^\{/.test(initial)) {
+        at = skipCollection(at, parent, initial);
+        const text = [initial, ...lines.slice(valueStart, at)].join('\n');
+        result[key] = flowMetadata(text.slice(0, text.lastIndexOf('}') + 1)); continue;
+      }
+      const opaque = depth === 0 ? !['name', 'description', 'when_to_use', 'metadata'].includes(key) :
+        owner === 'metadata' && key !== 'stakes';
+      const blockCollection = (!comment(initial) || /^(?:[&!]\S+)$/.test(initial)) && next < lines.length &&
+        ((indent(lines[next]) > parent && /^(?:[\w-]+:|[?](?:\s|$)|-(?:\s|$))/.test(lines[next].trimStart())) ||
+         (indent(lines[next]) === parent && /^-(?:\s|$)/.test(lines[next].trimStart())));
+      const supportedModels = key === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(comment(initial)) &&
+        !comment(initial).slice(1, -1).split(',').some(item => typed(item.trim()));
+      if (opaque && /^\*[\w-]+$/.test(initial)) {
+        result[key] = undefined; skipped.add(owner ? `${owner}.${key}` : key); continue;
+      }
+      if (opaque && !supportedModels && (blockCollection || /^(?:[&!]\S+\s+)*[\[{]/.test(initial) ||
+          (/^(?:[&!]\S+)$/.test(initial) && blockCollection))) {
+        result[key] = undefined; skipped.add(owner ? `${owner}.${key}` : key);
+        at = skipCollection(at, parent, initial); continue;
+      }
+      if (opaque && /^(?:[&!]\S+\s+)+/.test(initial)) {
+        const value = initial.replace(/^(?:[&!]\S+\s+)+/, '');
+        result[key] = undefined; skipped.add(owner ? `${owner}.${key}` : key);
+        at = scalar(value, parent, at, key, owner ?? key)[1]; continue;
+      }
       if (!comment(initial) && next < lines.length && indent(lines[next]) > parent &&
-          /^ *[a-zA-Z_][\w-]*:/.test(lines[next])) {
-        if (depth >= 1) { cannotRead(key); at = next + 1; }
-        else [result[key], at] = mapping(next, indent(lines[next]), depth + 1);
+          /^ *(?:[a-zA-Z_][\w-]*:|\? +[a-zA-Z_][\w-]*$)/.test(lines[next])) {
+        if (depth >= 1 || ['name', 'description'].includes(key)) {
+          cannotRead(owner ?? key); result[key] = undefined; at = skipCollection(next, parent);
+        }
+        else [result[key], at] = mapping(next, indent(lines[next]), depth + 1, key);
       } else {
         let start = initial, scalarAt = at;
         if (!comment(initial) && next < lines.length && indent(lines[next]) > parent) {
           start = lines[next].trimStart(); scalarAt = next + 1;
         }
-        [result[key], at] = scalar(start, parent, scalarAt, key);
+        [result[key], at] = scalar(start, parent, scalarAt, key, owner ?? key);
         if (depth === 0 && initial && !/^[|>]/.test(initial) && (!/^["']/.test(initial) || at === valueStart) &&
             !lines.slice(valueStart, at).some(line => !ignored(line))) singleLine.add(key);
       }
@@ -218,7 +390,7 @@ export function readFrontmatter(source) {
     return [result, at];
   }
   Object.assign(values, mapping(0, 0, 0)[0]);
-  return { values, unsupported, unclosed, unreadable, invalid, singleLine };
+  return { values, unsupported, unclosed, unreadable, invalid, singleLine, skipped };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
@@ -254,11 +426,13 @@ if (lines[0] !== '---') {
 }
 const fm = fmEnd > 0 ? lines.slice(1, fmEnd) : [];
 const parsed = readFrontmatter(fm.join('\n') + '\n');
-for (const field of parsed.invalid) fail(`frontmatter: invalid YAML in ${field}`);
-for (const field of parsed.unclosed) fail(`frontmatter: unclosed quote in ${field}`);
-if (parsed.unsupported) review("frontmatter uses YAML the checker can't read; check it by hand");
+const readingIssue = (field, message) => ['name', 'description'].includes(field) ? fail(message) :
+  review(`${message}; check it with a YAML parser`);
+for (const field of parsed.invalid) readingIssue(field, `frontmatter: invalid YAML in ${field}`);
+for (const field of parsed.unclosed) readingIssue(field, `frontmatter: unclosed quote in ${field}`);
+if (parsed.unsupported) review("frontmatter uses YAML the checker can't read; check it by hand with a YAML parser");
 const scalar = (field) => !parsed.unreadable.has(field) && !parsed.unclosed.has(field) && typeof parsed.values[field] === 'string' ? parsed.values[field] : null;
-if (scalar('name') === null && (!parsed.unsupported || !Object.hasOwn(parsed.values, 'name'))) fail('frontmatter: no `name:` field');
+if (scalar('name') === null && !parsed.unclosed.has('name') && (!parsed.unsupported || !Object.hasOwn(parsed.values, 'name'))) fail('frontmatter: no `name:` field');
 const fieldFailure = (field, msg) => parsed.singleLine.has(field) ? fail(msg) :
   review(`${field} is written across lines; check by hand: ${msg}`);
 const xmlTag = /<\/?[a-zA-Z][\w:.-]*(?:\s[^<>]*)?\s*\/?>/;
@@ -274,7 +448,7 @@ if (skillName !== null) {
 // ---- 2. Description cap ----
 const description = scalar('description');
 if (description === null) {
-  if (!parsed.unsupported || !Object.hasOwn(parsed.values, 'description')) fail('frontmatter: no `description:` field');
+  if (!parsed.unclosed.has('description') && (!parsed.unsupported || !Object.hasOwn(parsed.values, 'description'))) fail('frontmatter: no `description:` field');
   // Preserve the pre-release cap when the reader cannot measure an exact scalar.
   const descMatch = fm.join('\n').match(/^description:\s*([\s\S]*?)(?=^[a-zA-Z_-]+:|\s*$(?![\s\S]))/m);
   if (descMatch) {
@@ -327,10 +501,11 @@ const bodyStart = fmEnd + 1;
 // An unclosed frontmatter block has no identifiable body to scan.
 if (lines[0] !== '---' || fmEnd >= 0) {
   for (let i = bodyStart; i < lines.length; i++) {
-    const token = [...lines[i].matchAll(/(\\*)\$\d[\d,.]*/g)].find((match) => match[1].length !== 1);
-    if (token) {
-      const amount = token[0].slice(token[1].length).replace(/[,.]+$/, '');
-      review(`SKILL.md:${i + 1} "${amount}" — Claude Code replaces $0, $1, … with the skill's arguments when the skill runs; write a literal amount as ${String.fromCharCode(92)}${amount} (reference files are read as written) (CC7)`);
+    const amounts = [...lines[i].matchAll(/(\\*)\$\d[\d,.]*/g)]
+      .filter((match) => match[1].length !== 1)
+      .map((match) => match[0].slice(match[1].length).replace(/[,.]+$/, ''));
+    if (amounts.length) {
+      review(`SKILL.md:${i + 1} ${amounts.map((amount) => `"${amount}"`).join(', ')} — Claude Code replaces $0, $1, … with the skill's arguments when the skill runs; write a literal amount as ${String.fromCharCode(92)}${amounts[0]} (reference files are read as written) (CC7)`);
     }
   }
 }
