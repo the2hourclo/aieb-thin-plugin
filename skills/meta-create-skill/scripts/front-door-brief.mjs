@@ -2,14 +2,25 @@ import crypto from "node:crypto";
 
 const sha = (content) => crypto.createHash("sha256").update(content).digest("hex");
 export const goalHash = (goal) => goal && typeof goal === "object" ? sha(JSON.stringify(goal)) : null;
-const answer = (record, key) => [...(record.answers || [])].reverse()
-  .find((item) => item.key === key && item.provenance !== "inferred_unconfirmed")?.value ?? null;
+const latestAnswers = (record) => {
+  const latest = new Map();
+  for (const item of record.answers || []) {
+    const prior = latest.get(item.key);
+    if (!prior || (item.confirmed_at_revision ?? 0) >= (prior.confirmed_at_revision ?? 0)) latest.set(item.key, item);
+  }
+  return latest;
+};
+const answer = (record, key) => {
+  const item = latestAnswers(record).get(key);
+  return item?.provenance === "inferred_unconfirmed" ? null : item?.value ?? null;
+};
 
 export function validateBrief(record, { assets = {}, currentGoalHash = goalHash(record.goal) } = {}) {
   const gaps = [];
+  if (answer(record, "review_mode") !== "check_before_send") gaps.push("review_mode_not_draft_first");
   if (!record.rung) gaps.push("missing_rung_decision");
   if (record.outstanding_question?.required) gaps.push("required_question_outstanding");
-  for (const item of record.answers || []) if (item.provenance === "inferred_unconfirmed") gaps.push(`unconfirmed_answer:${item.key}`);
+  for (const item of latestAnswers(record).values()) if (item.provenance === "inferred_unconfirmed") gaps.push(`unconfirmed_answer:${item.key}`);
   const materialRevision = record.material_revision ?? Math.max(1, ...(record.asset_refs || []).map((ref) =>
     ref.read_evidence?.read_at_revision || 0));
   const confirmation = record.rung?.evidence?.find((entry) => entry.kind === "goal_confirmation"

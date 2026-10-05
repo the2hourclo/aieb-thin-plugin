@@ -28,8 +28,8 @@
     },
     {
       "path": "front-door-brief.mjs",
-      "sha256_raw": "e1e311219608a9452537275f27990e49955625f9b470b48e693b583da013bee1",
-      "sha256_eol_normalized": "dfd97f88ed8c4da546760648a2a1bc2eb46d7921857198a85fe944c28a7fdabe"
+      "sha256_raw": "13c8ac031486f43190779e6b8825a2ac862be031fe5c5913ede801a7dcc160da",
+      "sha256_eol_normalized": "aa7541907a88216aeac59f910e8dcc526b8e2f45ee0c08965abfe7eccaeb0969"
     },
     {
       "path": "build-record.schema.json",
@@ -43,8 +43,8 @@
     },
     {
       "path": "validate-structure.mjs",
-      "sha256_raw": "38829d47fde940478d3f2402ae0eb3d3325cc7ac54fff9d78d318884167df43a",
-      "sha256_eol_normalized": "0cd2080a3602763ed7c8e5100a8c362ec480ecc92ed11f4a9113af92f1f52734"
+      "sha256_raw": "0cf7719708512b9e81280a5835198463e4c2c0270949a9807b393828a886d9b0",
+      "sha256_eol_normalized": "91be440f8b050b4b554cab46bd1ee16fc8942936ebdefede764938af239636c8"
     }
   ]
 }
