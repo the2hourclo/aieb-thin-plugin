@@ -19,6 +19,7 @@
 //  11. REVIEW BP8/BP7 references not named in SKILL.md; cross-mentions only
 //      flag unnamed targets once (CHANGELOG.md history is not navigation)
 //  12. REVIEW BP20 backslash paths (Windows fences and absolute drives exempt)
+//  13. REVIEW CC7 unescaped $ before a digit in SKILL.md body (including fences)
 //
 // Usage: node validate-structure.mjs <skill-dir>
 // Prints numbered FAILs, `VERDICT: REVIEW` for unsupported YAML, or `VERDICT: CLEAN`.
@@ -66,26 +67,42 @@ export function readFrontmatter(source) {
     if (block) {
       const chomp = block[2] ?? block[5];
       let width = block[3] || block[4] ? parent + Number(block[3] ?? block[4]) : null;
-      const content = [];
-      while (at < lines.length) {
-        const line = lines[at];
-        if (line.trim() && indent(line) <= parent) break;
-        if (line.trim() && width === null) width = indent(line);
-        if (line.trim() && indent(line) < width) { bad(field); break; }
-        content.push(line.trim() ? line.slice(width) : '');
-        at++;
+      // Auto indentation includes leading all-space lines; explicit indicators
+      // skip only their declared indentation (PyYAML scan_block_scalar_*).
+      let breaks = '';
+      if (width === null) {
+        let maximum = parent + 1;
+        while (at < lines.length && /^ *$/.test(lines[at])) {
+          maximum = Math.max(maximum, lines[at].length);
+          breaks += '\n'; at++;
+        }
+        if (at < lines.length) maximum = Math.max(maximum, indent(lines[at]));
+        width = maximum;
       }
-      let out = '';
-      for (let k = 0; k < content.length; k++) {
-        out += content[k];
-        const next = content[k + 1];
-        const followingContent = content.slice(k + 1).find(Boolean);
-        const ordinary = content[k] && next && !/^ /.test(content[k]) && !/^ /.test(next);
-        out += block[1] === '>' && ordinary ? ' ' :
-          block[1] === '>' && content[k] && !/^ /.test(content[k]) && next === '' && followingContent && !/^ /.test(followingContent) ? '' : '\n';
+      const scanBreaks = () => {
+        let result = '';
+        while (at < lines.length && /^ *$/.test(lines[at]) && lines[at].length <= width) {
+          result += '\n'; at++;
+        }
+        return result;
+      };
+      breaks += scanBreaks();
+      let out = '', lineBreak = '';
+      while (at < lines.length && indent(lines[at]) >= width) {
+        const text = lines[at++].slice(width);
+        out += breaks + text;
+        lineBreak = '\n';
+        breaks = scanBreaks();
+        if (at < lines.length && indent(lines[at]) >= width) {
+          const next = lines[at].slice(width);
+          if (block[1] === '>' && !/^[ \t]/.test(text) && !/^[ \t]/.test(next)) {
+            if (!breaks) out += ' ';
+          } else out += lineBreak;
+        } else break;
       }
-      if (chomp === '-') out = out.replace(/\n+$/, '');
-      else if (chomp !== '+') out = out.replace(/\n+$/, '') + (content.some(Boolean) ? '\n' : '');
+      if (at < lines.length && indent(lines[at]) > parent) bad(field);
+      if (chomp !== '-') out += lineBreak;
+      if (chomp === '+') out += breaks;
       return [out, at];
     }
     if (/^['"]/.test(initial)) {
@@ -148,6 +165,7 @@ export function readFrontmatter(source) {
     if (typed(value)) cannotRead(field);
     while (at < lines.length) {
       if (ignored(lines[at])) {
+        if (!lines[at].trim() && /\t/.test(lines[at])) bad(field);
         if (lines[at].trim()) commented = true;
         else blanks++;
         at++; continue;
@@ -179,7 +197,10 @@ export function readFrontmatter(source) {
       const valueStart = at;
       if (Object.hasOwn(result, key)) cannotRead(key);
       let next = at;
-      while (next < lines.length && ignored(lines[next])) next++;
+      while (next < lines.length && ignored(lines[next])) {
+        if (!comment(initial) && !lines[next].trim() && /\t/.test(lines[next])) bad(key);
+        next++;
+      }
       if (!comment(initial) && next < lines.length && indent(lines[next]) > parent &&
           /^ *[a-zA-Z_][\w-]*:/.test(lines[next])) {
         if (depth >= 1) { cannotRead(key); at = next + 1; }
@@ -254,6 +275,16 @@ if (skillName !== null) {
 const description = scalar('description');
 if (description === null) {
   if (!parsed.unsupported || !Object.hasOwn(parsed.values, 'description')) fail('frontmatter: no `description:` field');
+  // Preserve the pre-release cap when the reader cannot measure an exact scalar.
+  const descMatch = fm.join('\n').match(/^description:\s*([\s\S]*?)(?=^[a-zA-Z_-]+:|\s*$(?![\s\S]))/m);
+  if (descMatch) {
+    let desc = descMatch[1].trim();
+    const quoted = desc.startsWith('"');
+    if (quoted) desc = desc.slice(1, desc.endsWith('"') ? -1 : undefined);
+    if (desc.length > 1024) {
+      fail(`description: ${desc.length} chars — exceeds the official 1,024-char cap (compress: one exemplar phrase per trigger family; see references/frontmatter.md)`);
+    }
+  }
 } else {
   let desc = description;
   if (!desc.trim()) fieldFailure('description', 'description: must be non-empty (BP4)');
@@ -291,6 +322,18 @@ let inFence = false;
 let firstH2 = null;
 const strayInFence = [];
 const bodyStart = fmEnd + 1;
+// ---- 13. Positional substitutions (advisory only; Markdown fences do not exempt them) ----
+// Only exactly one adjacent backslash escapes a token; two or more still expand.
+// An unclosed frontmatter block has no identifiable body to scan.
+if (lines[0] !== '---' || fmEnd >= 0) {
+  for (let i = bodyStart; i < lines.length; i++) {
+    const token = [...lines[i].matchAll(/(\\*)\$\d[\d,.]*/g)].find((match) => match[1].length !== 1);
+    if (token) {
+      const amount = token[0].slice(token[1].length).replace(/[,.]+$/, '');
+      review(`SKILL.md:${i + 1} "${amount}" — Claude Code replaces $0, $1, … with the skill's arguments when the skill runs; write a literal amount as ${String.fromCharCode(92)}${amount} (reference files are read as written) (CC7)`);
+    }
+  }
+}
 for (let i = bodyStart; i < lines.length; i++) {
   const line = lines[i];
   if (/^(```|~~~)/.test(line.trim())) { inFence = !inFence; continue; }
