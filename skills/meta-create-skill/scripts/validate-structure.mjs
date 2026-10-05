@@ -24,8 +24,147 @@
 // Prints numbered FAILs or `VERDICT: CLEAN`. Exit 1 on any FAIL.
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { join, basename, posix } from 'node:path';
+import { join, basename, posix, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+// A deliberately bounded YAML reader. Unsupported syntax makes frontmatter
+// checks advisory rather than guessing at values and rejecting a member skill.
+export function readFrontmatter(source) {
+  const lines = source.replace(new RegExp(`^${String.fromCharCode(0xfeff)}`), '').split(/\r?\n/);
+  if (lines.at(-1) === '') lines.pop(); // A terminator is not an extra blank line.
+  if (lines[0] === '---') {
+    lines.shift();
+    const end = lines.indexOf('---');
+    if (end >= 0) lines.splice(end);
+  }
+  const values = Object.create(null);
+  const unclosed = new Set();
+  const unreadable = new Set();
+  let unsupported = false;
+  const cannotRead = (field) => { unsupported = true; unreadable.add(field); };
+  const indent = (line) => line.match(/^ */)[0].length;
+  const ignored = (line) => !line.trim() || line.trimStart().startsWith('#');
+  const comment = (value) => value.replace(/(?:^|[ \t]+)#.*$/, '').trimEnd();
+  function scalar(initial, parent, at, field) {
+    let value = comment(initial);
+    const block = value.match(/^([|>])(?:(?:([+-])([1-9])?)|(?:([1-9])([+-])?))?$/);
+    if (block) {
+      const chomp = block[2] ?? block[5];
+      let width = block[3] || block[4] ? parent + Number(block[3] ?? block[4]) : null;
+      const content = [];
+      while (at < lines.length) {
+        const line = lines[at];
+        if (line.trim() && indent(line) <= parent) break;
+        if (line.trim() && width === null) width = indent(line);
+        if (line.trim() && indent(line) < width) { cannotRead(field); break; }
+        content.push(line.trim() ? line.slice(width) : '');
+        at++;
+      }
+      let out = '';
+      for (let k = 0; k < content.length; k++) {
+        out += content[k];
+        const next = content[k + 1];
+        const ordinary = content[k] && next && !/^ /.test(content[k]) && !/^ /.test(next);
+        out += block[1] === '>' && ordinary ? ' ' :
+          block[1] === '>' && content[k] && !/^ /.test(content[k]) && next === '' && content.slice(k + 1).some(Boolean) ? '' : '\n';
+      }
+      if (chomp === '-') out = out.replace(/\n+$/, '');
+      else if (chomp !== '+') out = out.replace(/\n+$/, '') + (content.some(Boolean) ? '\n' : '');
+      return [out, at];
+    }
+    if (/^['"]/.test(initial)) {
+      const quote = initial[0];
+      let text = initial.slice(1).trimEnd(), out = '', k = 0, continuedEscape = false;
+      const endsQuote = (line) => indent(line) <= parent && /^(?:---$|[a-zA-Z_][\w-]*:)/.test(line);
+      const escapes = { '0': 0, a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13,
+        e: 27, ' ': 32, '"': 34, '/': 47, '\\': 92, N: 0x85, _: 0xa0, L: 0x2028, P: 0x2029 };
+      while (true) {
+        if (k >= text.length) {
+          if (at >= lines.length || endsQuote(lines[at])) {
+            unclosed.add(field);
+            return [out, at];
+          }
+          let blanks = 0;
+          while (at < lines.length && !lines[at].trim()) { blanks++; at++; }
+          if (at >= lines.length || endsQuote(lines[at])) {
+            unclosed.add(field);
+            return [out, at];
+          }
+          out += blanks ? '\n'.repeat(blanks) : continuedEscape ? '' : ' ';
+          continuedEscape = false;
+          text += lines[at++].trim();
+        }
+        const char = text[k++];
+        if (char === quote) {
+          if (quote === "'" && text[k] === "'") { out += "'"; k++; continue; }
+          if (comment(text.slice(k)).trim()) cannotRead(field);
+          return [out, at];
+        }
+        if (quote === '"' && char === '\\') {
+          if (k >= text.length) { continuedEscape = true; continue; }
+          const escape = text[k++];
+          if (escape === '\n') continue;
+          if (Object.hasOwn(escapes, escape)) out += String.fromCodePoint(escapes[escape]);
+          else if (['x', 'u', 'U'].includes(escape)) {
+            const size = { x: 2, u: 4, U: 8 }[escape];
+            const hex = text.slice(k, k + size);
+            const code = Number.parseInt(hex, 16);
+            if (hex.length !== size || !/^[0-9a-f]+$/i.test(hex) || code > 0x10ffff) cannotRead(field);
+            else out += String.fromCodePoint(code);
+            k += size;
+          } else cannotRead(field);
+        } else out += char;
+      }
+    }
+    // models is the existing profile's expected list position. Keep its simple
+    // flow-list form; other collections are outside this reader's contract.
+    if (field === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(value)) {
+      return [value.slice(1, -1).split(',').map(item => item.trim()), at];
+    }
+    if (/^(?:[&*!\[\]{}|>@`]|-(?:\s|$)|\?(?:\s|$))/.test(value) || /:\s/.test(value)) {
+      cannotRead(field);
+      return [undefined, at];
+    }
+    const parts = [value.trim()];
+    while (at < lines.length) {
+      if (ignored(lines[at])) { at++; continue; }
+      if (indent(lines[at]) <= parent) break;
+      const continuation = comment(lines[at].trim());
+      if (/^(?:-(?:\s|$)|[\w-]+:\s)/.test(continuation)) { cannotRead(field); break; }
+      parts.push(continuation);
+      at++;
+    }
+    return [parts.filter(Boolean).join(' '), at];
+  }
+  function mapping(at, parent, depth) {
+    const result = Object.create(null);
+    while (at < lines.length) {
+      if (ignored(lines[at])) { at++; continue; }
+      if (indent(lines[at]) < parent) break;
+      const match = lines[at].match(/^ *([a-zA-Z_][\w-]*):(?:[ \t]+(.*)|$)/);
+      if (indent(lines[at]) !== parent || !match || /\t/.test(lines[at].slice(0, indent(lines[at]) + 1))) {
+        unsupported = true; at++; continue;
+      }
+      const key = match[1], initial = (match[2] ?? '').trimStart();
+      at++;
+      if (Object.hasOwn(result, key)) cannotRead(key);
+      let next = at;
+      while (next < lines.length && ignored(lines[next])) next++;
+      if (!comment(initial) && next < lines.length && indent(lines[next]) > parent &&
+          /^ *[a-zA-Z_][\w-]*:/.test(lines[next])) {
+        if (depth >= 1) { cannotRead(key); at = next + 1; }
+        else [result[key], at] = mapping(next, indent(lines[next]), depth + 1);
+      } else [result[key], at] = scalar(initial, parent, at, key);
+    }
+    return [result, at];
+  }
+  Object.assign(values, mapping(0, 0, 0)[0]);
+  return { values, unsupported, unclosed, unreadable };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+
+function main() {
 const target = process.argv[2];
 if (!target || !existsSync(target) || !statSync(target).isDirectory()) {
   console.error('Usage: node validate-structure.mjs <skill-dir>');
@@ -55,56 +194,10 @@ if (lines[0] !== '---') {
   if (fmEnd === -1) fail('frontmatter: opening `---` never closed');
 }
 const fm = fmEnd > 0 ? lines.slice(1, fmEnd) : [];
-const fmText = fm.join('\n');
-if (!/^name:\s*\S+/m.test(fmText)) fail('frontmatter: no `name:` field');
-
-// Read the scalar forms used by skill frontmatter, including quoted and block
-// descriptions. Do not count YAML quoting or block indicators as content.
-function stripScalarComments(source) {
-  // Only a scalar's opening quote selects quoted style; quotes in plain text
-  // are content. Quoted scalars can span lines and escape their closing quote.
-  let quote = /^["']/.test(source) ? source[0] : null;
-  let result = '';
-  for (let i = 0; i < source.length; i++) {
-    const char = source[i];
-    if (quote) {
-      result += char;
-      if (i === 0) continue;
-      if (quote === '"' && char === '\\') result += source[++i] ?? '';
-      else if (char === quote) {
-        if (quote === "'" && source[i + 1] === "'") result += source[++i];
-        else quote = null;
-      }
-    } else if (char === '#' && (i === 0 || /\s/.test(source[i - 1]))) {
-      while (i < source.length && source[i] !== '\n') i++;
-      if (i < source.length) result += '\n';
-    } else result += char;
-  }
-  return result.split('\n').map((line) => line.trimEnd()).join('\n').trim();
-}
-function decodeScalar(source, decode = true) {
-  let value = source.trim();
-  const headerEnd = value.indexOf('\n');
-  const header = stripScalarComments(headerEnd < 0 ? value : value.slice(0, headerEnd));
-  const block = /^[>|][+-]?$/.test(header);
-  // Block content is text, including lines beginning with #.
-  value = block ? header + (headerEnd < 0 ? '' : value.slice(headerEnd)) : stripScalarComments(value);
-  if (!decode) return value;
-  if (/^[>|][+-]?(?:\n|$)/.test(value)) {
-    const folded = value[0] === '>';
-    value = value.replace(/^[>|][+-]?\s*\n?/, '').split('\n').map((line) => line.trim()).join(folded ? ' ' : '\n');
-  } else if (value.startsWith('"') && value.endsWith('"')) {
-    try { value = JSON.parse(value); }
-    catch { value = value.slice(1, -1).replace(/\s*\n\s*/g, ' '); }
-  } else if (value.startsWith("'") && value.endsWith("'")) {
-    value = value.slice(1, -1).replace(/''/g, "'").replace(/\s*\n\s*/g, ' ');
-  }
-  return value;
-}
-function scalar(field, decode = true) {
-  const match = fmText.match(new RegExp(`^${field}:[ \\t]*([^\\n]*(?:\\n(?![a-zA-Z_-]+:)[^\\n]*)*)`, 'm'));
-  return match ? decodeScalar(match[1], decode) : null;
-}
+const parsed = readFrontmatter(fm.join('\n') + '\n');
+if (parsed.unsupported) review("frontmatter uses YAML the checker can't read; check it by hand");
+const scalar = (field) => !parsed.unreadable.has(field) && typeof parsed.values[field] === 'string' ? parsed.values[field] : null;
+if (scalar('name') === null && !parsed.unsupported) fail('frontmatter: no `name:` field');
 const xmlTag = /<\/?[a-zA-Z][\w:.-]*(?:\s[^<>]*)?\s*\/?>/;
 const skillName = scalar('name');
 if (skillName !== null) {
@@ -118,13 +211,11 @@ if (skillName !== null) {
 // ---- 2. Description cap ----
 const description = scalar('description');
 if (description === null) {
-  fail('frontmatter: no `description:` field');
+  if (!parsed.unsupported) fail('frontmatter: no `description:` field');
 } else {
   let desc = description;
-  const descSource = scalar('description', false);
-  if (descSource.startsWith('"') && !descSource.endsWith('"')) {
+  if (parsed.unclosed.has('description')) {
     fail('frontmatter: description opens with `"` but never closes it');
-    desc = desc.slice(1);
   }
   if (!desc.trim()) fail('description: must be non-empty (BP4)');
   if (xmlTag.test(desc)) fail('description: XML tags are not allowed (BP4)');
@@ -138,10 +229,8 @@ if (description === null) {
   }
 }
 
-// Profile guidance is advisory and independent of description scalar parsing.
-const metadataBlock = fmText.match(/^metadata:[ \t]*(?:#[^\n]*)?\n((?:(?:[ \t]+[^\n]*|#[^\n]*)(?:\n|$))*)/m)?.[1] ?? '';
-const profile = Object.fromEntries([...metadataBlock.matchAll(/^  (stakes|freedom|weight|models):[ \t]*(.*)$/gm)]
-  .map((match) => [match[1], decodeScalar(match[2])]));
+// Profile guidance uses the same reader as the listing fields.
+const profile = parsed.values.metadata && typeof parsed.values.metadata === 'object' ? parsed.values.metadata : {};
 if (!['stakes', 'freedom', 'weight', 'models'].every((key) => Object.hasOwn(profile, key))) {
   review("record the skill's profile in metadata (stakes, freedom, weight, models)");
 }
@@ -277,4 +366,6 @@ function report() {
   reviews.forEach((note) => console.log(`REVIEW: ${note}`));
   console.log(`VERDICT: ${fails.length} VIOLATION(S) — fix and re-run until CLEAN`);
   process.exit(1);
+}
+
 }
