@@ -147,7 +147,7 @@ const NUDGE_REMOTE =
   "accept it gracefully and stay silent. " +
   "(3) If their first message is already about onboarding (\"onboard me\", \"set up my " +
   "workspace\"), call the paid `get_skill` tool for `onboard`. " +
-  "If the host asks the user to connect AIEB, let its native secure browser flow finish " +
+  "If the host asks the user to connect AI Employee Builder, let its native secure browser flow finish " +
   "and then retry. Don't ask for a license key in chat and don't double-offer.";
 
 // Legacy per-phase progress file written by the onboard skill. Returns the

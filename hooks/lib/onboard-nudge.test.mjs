@@ -60,6 +60,8 @@ try {
   assert.match(fresh, /if the user says no, accept it gracefully and stay silent/);
   assert.match(fresh, /\(3\) If their first message is already about onboarding/);
   assert.match(fresh, /get_skill` tool for `onboard`/);
+  assert.match(fresh, /If the host asks the user to connect AI Employee Builder/);
+  assert.doesNotMatch(fresh, /connect AIEB/);
   assert.match(fresh, /Don't ask for a license key in chat/);
   assert.doesNotMatch(fresh, /walk you through building your first custom skill|say 'onboard me'|set up the authoring folders/, "the old onboarding pitch is gone");
   console.log("onboard-nudge: a fresh workspace routes build requests to the front door and offers the single line otherwise");

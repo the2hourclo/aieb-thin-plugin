@@ -1,7 +1,7 @@
 {
   "name": "ai-employee-builder",
-  "version": "0.35.0",
-  "description": "Public AI Employee Builder shell: auto-routing skills, remote OAuth, and an opt-in private local improvement ledger across Codex, Claude Code, and Cowork.",
+  "version": "0.36.0",
+  "description": "Public AI Employee Builder shell: auto-routing skills, remote OAuth, and an opt-in private local improvement ledger across Codex, Claude Code, and Claude.",
   "author": {
     "name": "Rashid Khamis",
     "email": "rashid@thepeakperformer.io",

@@ -165,11 +165,11 @@ function templateVersion(remote) {
 }
 
 const UPDATE_CMDS = IS_CODEX
-  ? `codex plugin add ${PLUGIN_NAME}@${MARKETPLACE}  →  start a fresh Codex thread  →  say "set up AIEB"`
-  : `Claude Code: /plugin install ${PLUGIN_NAME}@${MARKETPLACE}  →  /reload-plugins  →  say "set up AIEB". ` +
-    `Cowork/Desktop: Browse plugins → Personal → ${MARKETPLACE} → ⋯ → Check for updates; ` +
+  ? `codex plugin add ${PLUGIN_NAME}@${MARKETPLACE}  →  start a fresh Codex thread  →  say "set up AI Employee Builder"`
+  : `Claude Code: /plugin install ${PLUGIN_NAME}@${MARKETPLACE}  →  /reload-plugins  →  say "set up AI Employee Builder". ` +
+    `Claude desktop app: Browse plugins → Personal → ${MARKETPLACE} → ⋯ → Check for updates; ` +
     `then Customize → Plugins → AI Employee Builder → Update if shown; ` +
-    `start a fresh task and say "set up AIEB"`;
+    `start a fresh task and say "set up AI Employee Builder"`;
 
 const FIRM =
   `[${PLUGIN_NAME} hook] The AI Employee Builder plugin shell installed here is v{have}, ` +

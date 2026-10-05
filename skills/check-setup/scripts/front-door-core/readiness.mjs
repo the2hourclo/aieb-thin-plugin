@@ -187,8 +187,16 @@ export function reconcileWorkspace({ root, surface = "codex", rootResult, onboar
   const instructionText = fs.existsSync(path.join(root, instruction)) ? fs.readFileSync(path.join(root, instruction), "utf8") : "";
   if (!instructionText.includes("BUSINESS-MAP.md")) missing.push("instruction_block");
   const map = path.join(root, "BUSINESS-MAP.md");
-  if (!fs.existsSync(map) || !fs.readFileSync(map, "utf8").trim()) missing.push("business_map");
-  if (!["marketing", "sales", "product", "operations", "finance", "strategy"].every((d) => fs.existsSync(path.join(root, d)))) missing.push("departments");
+  const mapText = fs.existsSync(map) ? fs.readFileSync(map, "utf8") : "";
+  if (!mapText.trim()) missing.push("business_map");
+  const linkedDepartments = [...mapText.matchAll(/\]\(([^)\r\n]+)\/DEPARTMENT\.md\)/g)]
+    .map((match) => match[1])
+    .filter((dir) => !path.isAbsolute(dir) && !path.win32.isAbsolute(dir)
+      && !dir.split(/[\\/]/).includes("..") && !/^[a-z][a-z\d+.-]*:/i.test(dir)
+      && beneath(path.resolve(root), path.resolve(root, dir)));
+  const departments = linkedDepartments.length ? linkedDepartments
+    : ["marketing", "sales", "product", "operations", "finance", "strategy"];
+  if (!departments.every((d) => fs.existsSync(path.join(root, d)))) missing.push("departments");
   let row = onboarding;
   if (!row) try { row = JSON.parse(fs.readFileSync(path.join(root, ".claude-state", "onboarding-progress.json"), "utf8")); }
   catch { row = null; }

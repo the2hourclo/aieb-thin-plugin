@@ -261,6 +261,11 @@ async function updatePingOnCodex() {
   const ctx = JSON.parse(stdout).hookSpecificOutput.additionalContext;
   assert.match(ctx, new RegExp(`this workspace has v${version.replace(/\./g, "\\.")}`));
   assert.match(ctx, /codex plugin add/, "Codex update steps are used");
+  assert.match(ctx, /say "set up AI Employee Builder"/);
+  assert.doesNotMatch(ctx, /set up AIEB|Cowork\/Desktop/);
+  const updateSource = fs.readFileSync(path.join(hooksDir, "update_ping.mjs"), "utf8");
+  assert.match(updateSource, /Claude desktop app: Browse plugins/);
+  assert.doesNotMatch(updateSource, /say "set up AIEB"|Cowork\/Desktop: Browse plugins/);
 }
 
 // ---- stale tool references -------------------------------------------------

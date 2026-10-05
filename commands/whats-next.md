@@ -5,7 +5,7 @@ allowed-tools: [Read, Glob]
 
 # What's Next — resume the build
 
-The buyer's whole journey is persisted in `.claude-state/progress-state.yaml` at the workspace root. On native Claude Code a SessionStart hook surfaces this automatically; on Cowork that hook does not fire, so this command is the reliable way to resume. Read the state, tell them exactly where they left off in one or two lines, then offer to run the single next move. Do not restart anything they've already finished.
+The buyer's whole journey is persisted in `.claude-state/progress-state.yaml` at the workspace root. On native Claude Code a SessionStart hook surfaces this automatically; on Claude in a Project or folder that hook does not fire, so this command is the reliable way to resume. Read the state, tell them exactly where they left off in one or two lines, then offer to run the single next move. Do not restart anything they've already finished.
 
 ## Step 1 — Read the state
 
@@ -20,7 +20,7 @@ Interpret these keys:
 
 ## Step 2 — Branch on where they are
 
-**No state file (fresh workspace).** They haven't onboarded on this machine. Don't invent progress. If AI Employee Builder is connected, say one line and offer to set up: *"Nothing saved here yet — want me to set up your workspace and install your Business OS? About 10 minutes."* then invoke setup (in Cowork, select `/ai-employee-builder:setup-aieb`; the selected chip may show `/setup-aieb`) or fetch the `onboard` skill if already connected. The natural-language route **set up AIEB** also works. If they only want the free map, tell them to say **map my business**.
+**No state file (fresh workspace).** They haven't onboarded on this machine. Don't invent progress. If AI Employee Builder is connected, say one line and offer to set up: *"Nothing saved here yet — want me to set up your workspace and install your Business OS? About 10 minutes."* then invoke setup (in the Claude app, select `/ai-employee-builder:setup-aieb`; the selected chip may show `/setup-aieb`) or fetch the `onboard` skill if already connected. The natural-language route **set up AI Employee Builder** also works. If they only want the free map, tell them to say **map my business**.
 
 **Onboarding not complete** (`onboarding.completed_at` absent, file present). Resume onboarding from its `current_step` — do not restart it from the top.
 

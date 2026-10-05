@@ -5,9 +5,9 @@ This plugin is intentionally thin. It contains routing skills, commands, and opt
 - MCP and OAuth resource: `https://api.chiefleverageofficers.com/mcp`
 - Customer onboarding: `https://course.chiefleverageofficers.com/clo-course/get-access-aieb.html`
 
-## Connection model (v0.30.0+; conversational setup in v0.31.0+; Cowork workspace preflight in v0.31.4)
+## Connection model (v0.30.0+; conversational setup in v0.31.0+; Project-folder preflight in v0.31.4)
 
-The plugin declares AIEB as a remote HTTP MCP with OAuth resource metadata. Cowork, Claude Code, and Codex can use their native connector authentication instead of launching a local Node proxy.
+The plugin declares AIEB as a remote HTTP MCP with OAuth resource metadata. Claude (in a Project or folder), Claude Code, and Codex can use their native connector authentication instead of launching a local Node proxy.
 
 1. A paid `get_skill` request reaches the hosted MCP.
 2. If the host has no valid AIEB token, the MCP returns a standards-based OAuth challenge.
@@ -15,8 +15,8 @@ The plugin declares AIEB as a remote HTTP MCP with OAuth resource metadata. Cowo
 4. A returning buyer continues with an existing course session or the Google address attached to the purchase. The server first resolves the member and entitlement already stored in Neon, so it does not consume another Lemon Squeezy activation.
 5. If that member has only a legacy local-device activation, the server atomically converts that existing slot into the first remote connector grant. A genuinely additional connector may activate another permitted instance server-side.
 6. The host receives a short-lived access token plus a rotating refresh token. Only token hashes are stored.
-7. If a server ever pauses paid delivery until the four member-intake answers are complete (only when it lists a `complete_aieb_onboarding` tool; the current server does not), the connector remains authenticated. In Cowork, the buyer types `/ai-employee-builder:setup-aieb`, selects that namespaced skill, then presses Enter or starts the task. The selected chip may display `/setup-aieb`. The setup skill asks the questions and calls that tool; it never sends the buyer through OAuth a second time. Saying **set up AIEB** is the natural-language alternative.
-8. Before local onboarding, Cowork separately verifies that the chat belongs to a Project with the intended persistent readable/writable folder. Without one, setup keeps the connector and entitlement marked healthy, gives **New chat → Project → Add folder**, and stops before writing to scratch space.
+7. If a server ever pauses paid delivery until the four member-intake answers are complete (only when it lists a `complete_aieb_onboarding` tool; the current server does not), the connector remains authenticated. In the Claude app, the buyer types `/ai-employee-builder:setup-aieb`, selects that namespaced skill, then presses Enter or starts the task. The selected chip may display `/setup-aieb`. The setup skill asks the questions and calls that tool; it never sends the buyer through OAuth a second time. Saying **set up AI Employee Builder** is the natural-language alternative.
+8. Before local onboarding on Claude in a Project or folder, setup separately verifies that the chat belongs to a Project with the intended persistent readable/writable folder. Without one, setup keeps the connector and entitlement marked healthy, gives **New chat → Project → Add folder**, and stops before writing to scratch space.
 
 A Lemon Squeezy license key remains a secure-page fallback. It is never requested in chat, placed in an MCP config file, or returned to the plugin.
 
@@ -35,7 +35,7 @@ No transcript, prompt, uploaded file, memory, license key, or customer business 
 
 ### Optional local Continuous Improvement Ledger (v0.32.0+)
 
-After the buyer explicitly opts in during setup, the retrospective hook records pointer-only `win` and `friction` events in that runtime's workspace inbox and ingests them into `.aieb/retrospective/ledger.jsonl`. Claude/Cowork use `.claude/.state/retrospective/inbox.jsonl`; Codex uses `.codex/.state/retrospective/inbox.jsonl`; another Agent Plugins-compatible host uses `.agents/.state/retrospective/inbox.jsonl`.
+After the buyer explicitly opts in during setup, the retrospective hook records pointer-only `win` and `friction` events in that runtime's workspace inbox and ingests them into `.aieb/retrospective/ledger.jsonl`. Claude Code and Claude in a Project or folder use `.claude/.state/retrospective/inbox.jsonl`; Codex uses `.codex/.state/retrospective/inbox.jsonl`; another Agent Plugins-compatible host uses `.agents/.state/retrospective/inbox.jsonl`.
 
 The collector does not copy transcript text, make network requests, edit skills, or authorize product feedback. Full transcript locations remain in the originating runtime inbox and never enter the shared ledger. Before first capture, the four private-state directories are added to the workspace `.gitignore` without replacing existing rules. Missing, declined, malformed, or unsafe preferences keep capture off; manual retrospective remains available. The workspace can opt out at any time by setting `.aieb/retrospective/preferences.json` to `enabled: false`.
 
@@ -51,7 +51,7 @@ The bundled `scripts/retrospective-ledger.mjs` helper performs deterministic ing
 /setup-aieb
 ```
 
-In Cowork/Desktop, update the marketplace through **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then open **Customize → Plugins → AI Employee Builder → Update** if that button appears. Start a fresh session, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. Cowork may shorten the selected chip to `/setup-aieb`; that is expected. The buyer can instead say **set up AIEB**. For an expired authorization, open **Customize → Connectors → aieb** and reconnect. Disconnect first only when the host falsely leaves the expired connector marked **Connected**. The browser handles authentication; no local-runtime toggle or local Node installation is required.
+In the Claude desktop app, update the marketplace through **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then open **Customize → Plugins → AI Employee Builder → Update** if that button appears. Start a fresh session, type `/ai-employee-builder:setup-aieb`, choose the namespaced plugin skill, then press Enter or start the task. Claude may shorten the selected chip to `/setup-aieb`; that is expected. The buyer can instead say **set up AI Employee Builder**. For an expired authorization, open **Customize → Connectors → aieb** and reconnect. Disconnect first only when the host falsely leaves the expired connector marked **Connected**. The browser handles authentication; no local-runtime toggle or local Node installation is required.
 
 ## Connector declaration
 
@@ -81,12 +81,12 @@ Both `.mcp.json` and `mcp.json` declare the remote resource:
 
 | Symptom | Buyer-safe fix |
 |---|---|
-| Connector missing from the session | In Cowork, run **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then **Customize → Plugins → AI Employee Builder → Update** if shown. Start a fresh session and select `/ai-employee-builder:setup-aieb`; a bare typed `/setup-aieb` may not resolve before selection. |
+| Connector missing from the session | In the Claude app, run **Browse plugins → Personal → aieb-thin-plugin → ⋯ → Check for updates**, then **Customize → Plugins → AI Employee Builder → Update** if shown. Start a fresh session and select `/ai-employee-builder:setup-aieb`; a bare typed `/setup-aieb` may not resolve before selection. |
 | Host asks to authenticate | Click **Connect**, finish the secure browser flow, and retry the paid action. |
-| Authorization expired, but Cowork still shows Connected | Open **Customize → Connectors → aieb**, disconnect the falsely connected entry, then reconnect. If it is not falsely marked Connected, reconnect without the disconnect step. |
-| Connected, but member setup is incomplete | Stay in the same session. In Cowork, select `/ai-employee-builder:setup-aieb` (the selected chip may shorten to `/setup-aieb`) or say **set up AIEB**. It asks four short questions and completes onboarding through the authenticated connector. Do not reconnect. |
-| Connected and paid, but no Cowork Project folder is attached | Authentication is complete; workspace setup is not. Open **New chat → Project → Add folder**, attach the persistent folder AIEB should use, then run setup again. Do not onboard in temporary scratch space. |
-| Cowork opened a read-only or wrong Project folder | Open the existing Cowork Project that owns the AIEB workspace and attach its original folder with write access. Do not rebuild or replace its state in a new folder. |
+| Authorization expired, but Claude still shows Connected | Open **Customize → Connectors → aieb**, disconnect the falsely connected entry, then reconnect. If it is not falsely marked Connected, reconnect without the disconnect step. |
+| Connected, but member setup is incomplete | Stay in the same session. In the Claude app, select `/ai-employee-builder:setup-aieb` (the selected chip may shorten to `/setup-aieb`) or say **set up AI Employee Builder**. It asks four short questions and completes onboarding through the authenticated connector. Do not reconnect. |
+| Connected and paid, but no Project folder is attached | Authentication is complete; workspace setup is not. Open **New chat → Project → Add folder**, attach the persistent folder AI Employee Builder should use, then run setup again. Do not onboard in temporary scratch space. |
+| Claude opened a read-only or wrong Project folder | Open the existing Project that owns the AI Employee Builder workspace and attach its original folder with write access. Do not rebuild or replace its state in a new folder. |
 | Returning buyer is not recognized | Use the Google address attached to the purchase; use a Lemon Squeezy key only on the secure browser page if needed. |
 | Subscription cancelled or lapsed | Resume or renew, then retry. Reinstallation is unnecessary. |
 | Network/VPN problem | Restore connectivity and retry; a transport error must not be described as a license rejection. |
