@@ -43,8 +43,17 @@ export function readFrontmatter(source) {
   const values = Object.create(null);
   const unclosed = new Set();
   const unreadable = new Set();
+  const invalid = new Set();
+  const singleLine = new Set();
   let unsupported = false;
   const cannotRead = (field) => { unsupported = true; unreadable.add(field); };
+  const bad = (field) => { cannotRead(field); invalid.add(field); };
+  // Strip presentation whitespace, preserving a double-quoted escaped final space.
+  const quotedTail = (line, quote) => {
+    if (quote !== '"') return line.trimEnd();
+    const tail = line.match(/(\\+)([ \t]+)$/);
+    return tail && tail[1].length % 2 ? line.trimEnd() + tail[2][0] : line.trimEnd();
+  };
   const indent = (line) => line.match(/^ */)[0].length;
   const ignored = (line) => !line.trim() || line.trimStart().startsWith('#');
   const comment = (value) => value.replace(/(?:^|[ \t]+)#.*$/, '').trimEnd();
@@ -53,6 +62,7 @@ export function readFrontmatter(source) {
   function scalar(initial, parent, at, field) {
     let value = comment(initial);
     const block = value.match(/^([|>])(?:(?:([+-])([1-9])?)|(?:([1-9])([+-])?))?$/);
+    if (/^[|>]/.test(value) && !block) bad(field);
     if (block) {
       const chomp = block[2] ?? block[5];
       let width = block[3] || block[4] ? parent + Number(block[3] ?? block[4]) : null;
@@ -61,7 +71,7 @@ export function readFrontmatter(source) {
         const line = lines[at];
         if (line.trim() && indent(line) <= parent) break;
         if (line.trim() && width === null) width = indent(line);
-        if (line.trim() && indent(line) < width) { cannotRead(field); break; }
+        if (line.trim() && indent(line) < width) { bad(field); break; }
         content.push(line.trim() ? line.slice(width) : '');
         at++;
       }
@@ -69,9 +79,10 @@ export function readFrontmatter(source) {
       for (let k = 0; k < content.length; k++) {
         out += content[k];
         const next = content[k + 1];
+        const followingContent = content.slice(k + 1).find(Boolean);
         const ordinary = content[k] && next && !/^ /.test(content[k]) && !/^ /.test(next);
         out += block[1] === '>' && ordinary ? ' ' :
-          block[1] === '>' && content[k] && !/^ /.test(content[k]) && next === '' && content.slice(k + 1).some(Boolean) ? '' : '\n';
+          block[1] === '>' && content[k] && !/^ /.test(content[k]) && next === '' && followingContent && !/^ /.test(followingContent) ? '' : '\n';
       }
       if (chomp === '-') out = out.replace(/\n+$/, '');
       else if (chomp !== '+') out = out.replace(/\n+$/, '') + (content.some(Boolean) ? '\n' : '');
@@ -79,7 +90,7 @@ export function readFrontmatter(source) {
     }
     if (/^['"]/.test(initial)) {
       const quote = initial[0];
-      let text = initial.slice(1).trimEnd(), out = '', k = 0, continuedEscape = false;
+      let text = quotedTail(initial.slice(1), quote), out = '', k = 0, continuedEscape = false;
       const escapes = { '0': 0, a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13,
         e: 27, ' ': 32, '"': 34, '/': 47, '\\': 92, N: 0x85, _: 0xa0, L: 0x2028, P: 0x2029 };
       while (true) {
@@ -96,12 +107,12 @@ export function readFrontmatter(source) {
           }
           out += blanks ? '\n'.repeat(blanks) : continuedEscape ? '' : ' ';
           continuedEscape = false;
-          text += lines[at++].trim();
+          text += quotedTail(lines[at++].trimStart(), quote);
         }
         const char = text[k++];
         if (char === quote) {
           if (quote === "'" && text[k] === "'") { out += "'"; k++; continue; }
-          if (comment(text.slice(k)).trim()) cannotRead(field);
+          if (comment(text.slice(k)).trim()) bad(field);
           return [out, at];
         }
         if (quote === '"' && char === '\\') {
@@ -113,10 +124,10 @@ export function readFrontmatter(source) {
             const size = { x: 2, u: 4, U: 8 }[escape];
             const hex = text.slice(k, k + size);
             const code = Number.parseInt(hex, 16);
-            if (hex.length !== size || !/^[0-9a-f]+$/i.test(hex) || code > 0x10ffff) cannotRead(field);
+            if (hex.length !== size || !/^[0-9a-f]+$/i.test(hex) || code > 0x10ffff) bad(field);
             else out += String.fromCodePoint(code);
             k += size;
-          } else cannotRead(field);
+          } else bad(field);
         } else out += char;
       }
     }
@@ -127,11 +138,12 @@ export function readFrontmatter(source) {
       if (items.some(typed)) cannotRead(field);
       return [items, at];
     }
+    if (/^[@`]/.test(value) || (!/^[&*!\[\]{}]/.test(value) && /:\s/.test(value)) || /\t/.test(value)) bad(field);
     if (/^(?:[&*!\[\]{}|>@`]|-(?:\s|$)|\?(?:\s|$))/.test(value) || /:\s/.test(value)) {
       cannotRead(field);
       return [undefined, at];
     }
-    const parts = [value.trim()];
+    const parts = value.trim() ? [value.trim()] : [];
     let blanks = 0, commented = comment(initial) !== initial.trimEnd();
     if (typed(value)) cannotRead(field);
     while (at < lines.length) {
@@ -141,14 +153,16 @@ export function readFrontmatter(source) {
         at++; continue;
       }
       if (indent(lines[at]) <= parent) break;
-      if (commented) cannotRead(field);
+      if (commented && parts.length) bad(field);
       const continuation = comment(lines[at].trim());
+      if (/\t|:\s/.test(continuation)) bad(field);
       if (/^(?:-(?:\s|$)|[\w-]+:\s)/.test(continuation)) { cannotRead(field); break; }
-      parts.push((blanks ? '\n'.repeat(blanks) : ' ') + continuation);
+      parts.push((parts.length ? (blanks ? '\n'.repeat(blanks) : ' ') : '') + continuation);
       blanks = 0;
       commented = continuation !== lines[at].trim();
       at++;
     }
+    if (!parts.length) cannotRead(field); // YAML null is outside text fields.
     return [parts.join(''), at];
   }
   function mapping(at, parent, depth) {
@@ -162,6 +176,7 @@ export function readFrontmatter(source) {
       }
       const key = match[1], initial = (match[2] ?? '').trimStart();
       at++;
+      const valueStart = at;
       if (Object.hasOwn(result, key)) cannotRead(key);
       let next = at;
       while (next < lines.length && ignored(lines[next])) next++;
@@ -169,12 +184,20 @@ export function readFrontmatter(source) {
           /^ *[a-zA-Z_][\w-]*:/.test(lines[next])) {
         if (depth >= 1) { cannotRead(key); at = next + 1; }
         else [result[key], at] = mapping(next, indent(lines[next]), depth + 1);
-      } else [result[key], at] = scalar(initial, parent, at, key);
+      } else {
+        let start = initial, scalarAt = at;
+        if (!comment(initial) && next < lines.length && indent(lines[next]) > parent) {
+          start = lines[next].trimStart(); scalarAt = next + 1;
+        }
+        [result[key], at] = scalar(start, parent, scalarAt, key);
+        if (depth === 0 && initial && !/^[|>]/.test(initial) && (!/^["']/.test(initial) || at === valueStart) &&
+            !lines.slice(valueStart, at).some(line => !ignored(line))) singleLine.add(key);
+      }
     }
     return [result, at];
   }
   Object.assign(values, mapping(0, 0, 0)[0]);
-  return { values, unsupported, unclosed, unreadable };
+  return { values, unsupported, unclosed, unreadable, invalid, singleLine };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
@@ -210,35 +233,38 @@ if (lines[0] !== '---') {
 }
 const fm = fmEnd > 0 ? lines.slice(1, fmEnd) : [];
 const parsed = readFrontmatter(fm.join('\n') + '\n');
+for (const field of parsed.invalid) fail(`frontmatter: invalid YAML in ${field}`);
 for (const field of parsed.unclosed) fail(`frontmatter: unclosed quote in ${field}`);
 if (parsed.unsupported) review("frontmatter uses YAML the checker can't read; check it by hand");
-const scalar = (field) => !parsed.unreadable.has(field) && typeof parsed.values[field] === 'string' ? parsed.values[field] : null;
-if (scalar('name') === null && !parsed.unsupported) fail('frontmatter: no `name:` field');
+const scalar = (field) => !parsed.unreadable.has(field) && !parsed.unclosed.has(field) && typeof parsed.values[field] === 'string' ? parsed.values[field] : null;
+if (scalar('name') === null && (!parsed.unsupported || !Object.hasOwn(parsed.values, 'name'))) fail('frontmatter: no `name:` field');
+const fieldFailure = (field, msg) => parsed.singleLine.has(field) ? fail(msg) :
+  review(`${field} is written across lines; check by hand: ${msg}`);
 const xmlTag = /<\/?[a-zA-Z][\w:.-]*(?:\s[^<>]*)?\s*\/?>/;
 const skillName = scalar('name');
 if (skillName !== null) {
-  if (skillName.length < 1 || skillName.length > 64) fail('name: must be 1–64 characters (BP4)');
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(skillName)) fail('name: use lowercase letters/numbers separated by single hyphens (BP4)');
-  if (xmlTag.test(skillName)) fail('name: XML tags are not allowed (BP4)');
-  if (/anthropic|claude/i.test(skillName)) fail('name: must not contain reserved words anthropic or claude (BP4)');
+  if (skillName.length < 1 || skillName.length > 64) fieldFailure('name', 'name: must be 1–64 characters (BP4)');
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(skillName)) fieldFailure('name', 'name: use lowercase letters/numbers separated by single hyphens (BP4)');
+  if (xmlTag.test(skillName)) fieldFailure('name', 'name: XML tags are not allowed (BP4)');
+  if (/anthropic|claude/i.test(skillName)) fieldFailure('name', 'name: must not contain reserved words anthropic or claude (BP4)');
   if (/^(verify|simplify)$/.test(skillName)) review(`name: ${skillName} — Claude Code runs a skill with this name before every commit (CC6)`);
 }
 
 // ---- 2. Description cap ----
 const description = scalar('description');
 if (description === null) {
-  if (!parsed.unsupported) fail('frontmatter: no `description:` field');
+  if (!parsed.unsupported || !Object.hasOwn(parsed.values, 'description')) fail('frontmatter: no `description:` field');
 } else {
   let desc = description;
-  if (!desc.trim()) fail('description: must be non-empty (BP4)');
-  if (xmlTag.test(desc)) fail('description: XML tags are not allowed (BP4)');
+  if (!desc.trim()) fieldFailure('description', 'description: must be non-empty (BP4)');
+  if (xmlTag.test(desc)) fieldFailure('description', 'description: XML tags are not allowed (BP4)');
   if (desc.length > 1024) {
     fail(`description: ${desc.length} chars — exceeds the official 1,024-char cap (compress: one exemplar phrase per trigger family; see references/frontmatter.md)`);
   }
   const listingLength = desc.length + (scalar('when_to_use') ?? '').length;
-  if (listingLength > 1536) fail(`description + when_to_use: ${listingLength} chars — exceeds the 1,536-char listing cap (CC2)`);
+  if (listingLength > 1536) fieldFailure(parsed.singleLine.has('description') ? 'when_to_use' : 'description', `description + when_to_use: ${listingLength} chars — exceeds the 1,536-char listing cap (CC2)`);
   if (/\bI (?:can|will|'ll|help)\b|\bI['’](?:m|ll)\b|\byou can\b|\byou(?:['’]ll| will)\b/i.test(desc)) {
-    review('description: write the description in third person; it is injected into the system prompt (BP6)');
+    (parsed.singleLine.has('description') ? review : (msg) => fieldFailure('description', msg))('description: write the description in third person; it is injected into the system prompt (BP6)');
   }
 }
 
