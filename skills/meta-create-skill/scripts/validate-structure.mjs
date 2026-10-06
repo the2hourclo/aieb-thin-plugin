@@ -22,8 +22,8 @@
 //  13. REVIEW CC7 unescaped $ before a digit in SKILL.md body (including fences)
 //
 // Usage: node validate-structure.mjs <skill-dir>
-// Prints numbered FAILs, `VERDICT: REVIEW` for unsupported YAML, or `VERDICT: CLEAN`.
-// Exit 1 on any FAIL. Unsupported syntax is advisory and never claims CLEAN.
+// Prints numbered FAILs or `VERDICT: CLEAN` (possibly with REVIEW notes).
+// YAML reading doubts are advisory; uncertain fields retain frozen legacy rules.
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, basename, posix, resolve } from 'node:path';
@@ -49,12 +49,19 @@ const uncertainLiteral = { test(text) {
   }
   return false;
 } };
-// Explicit frozen ECMAScript whitespace set, solely for f901fb1c raw compatibility.
-const legacySpace = '[' + [9, 10, 11, 12, 13, 32, 0xa0, 0x1680,
-  ...Array.from({ length: 11 }, (_, n) => 0x2000 + n), 0x2028, 0x2029,
-  0x202f, 0x205f, 0x3000, 0xfeff].map(code => String.fromCharCode(code)).join('') + ']';
 
 export function readFrontmatter(source) {
+  try { return readBoundedFrontmatter(source); }
+  catch {
+    // Reader limits and unexpected parser errors are uncertainty, never a new
+    // rejection path. The caller will run the frozen whole-frontmatter checks.
+    return { values: Object.create(null), unsupported: true,
+      unreadable: new Set(['extent']), unclosed: new Set(), invalid: new Set(),
+      singleLine: new Set(), skipped: new Set() };
+  }
+}
+
+function readBoundedFrontmatter(source) {
   const lines = source.replace(new RegExp(`^${String.fromCharCode(0xfeff)}`), '').split(/\r\n|[\r\n]/);
   if (lines.at(-1) === '') lines.pop(); // A terminator is not an extra blank line.
   if (lines[0] === '---') {
@@ -101,7 +108,11 @@ export function readFrontmatter(source) {
         for (let k = 0; k < physical.length; k++) {
           const char = physical[k];
           if (quote) {
-            if (quote === '"' && char === '\\') { k++; continue; }
+            if (quote === '"' && char === '\\') {
+              const escape = physical[k + 1];
+              if (!escape || !/^[0abtnvfre \"/\\N_LP]$/.test(escape)) cannotRead('extent');
+              k++; continue;
+            }
             if (char === quote) {
               if (quote === "'" && physical[k + 1] === "'") k++;
               else { quote = null; if (quoted && !stack.length) return line + 1; }
@@ -110,7 +121,7 @@ export function readFrontmatter(source) {
           else if ((char === '"' || char === "'") && tokenStart) { quote = char; tokenStart = false; }
           else if ((char === '[' || char === '{') && tokenStart) { stack.push(char); tokenStart = true; }
           else if (char === ']' || char === '}') {
-            if (stack.pop() !== (char === ']' ? '[' : '{')) unsupported = true;
+            if (stack.pop() !== (char === ']' ? '[' : '{')) cannotRead('extent');
             if (!stack.length) return line + 1;
             tokenStart = false;
           } else if (char === ',' || char === ':') tokenStart = true;
@@ -122,15 +133,16 @@ export function readFrontmatter(source) {
     }
     function valueEnd(start, width, text) {
       const bare = yamlStart(comment(text)).replace(/^(?:[&!][^ \t\r\n]+(?:[ \t]+|$))*/, '');
-      if (/^[|>]/.test(bare)) {
-        const indicator = bare.match(/^[|>][+-]?([1-9])/);
-        let blockWidth = indicator ? width + Number(indicator[1]) : null;
-        let end = start;
-        while (end < lines.length && !yamlTrim(lines[end])) end++;
-        if (blockWidth === null) blockWidth = Math.max(width + 1, end < lines.length ? indent(lines[end]) : width + 1);
-        while (start < lines.length && (!yamlTrim(lines[start]) || indent(lines[start]) >= blockWidth)) start++;
-        return start;
+      if (!bare) {
+        let next = start;
+        while (next < lines.length && ignored(lines[next])) next++;
+        if (next < lines.length && indent(lines[next]) > width &&
+            !keyPattern.test(lines[next]) && !/^-(?:[ \t]|$)/.test(yamlStart(lines[next])))
+          return valueEnd(next + 1, width, yamlStart(lines[next]));
       }
+      if (/^[|>]/.test(bare)) return scalar(bare, width, start, 'opaque', 'extent')[1];
+      if (/^["']/.test(bare)) scalar(yamlStart(text).replace(/^(?:[&!][^ \t\r\n]+(?:[ \t]+|$))*/, ''), width, start, 'opaque', 'extent');
+      if (/^[@`]/.test(bare) || !/^["'[{|>]/.test(bare) && /:(?:[ \t]|$)/.test(bare)) cannotRead('extent');
       if (bare && !/^["'[{]/.test(bare)) {
         // Plain scalar continuations may begin with quotes, brackets or tags.
         // They remain plain text; opening a token there would invent an extent.
@@ -148,6 +160,7 @@ export function readFrontmatter(source) {
       const dash = text.match(/^(?:- +)+/);
       const payload = dash ? text.slice(dash[0].length) : text;
       const match = payload.match(keyPattern);
+      if (!match && !dash) cannotRead('extent');
       const initial = match ? (match[5] ?? '') : payload;
       const ownerWidth = width + (match && dash ? dash[0].length : 0);
       at = valueEnd(at + 1, ownerWidth, initial);
@@ -158,8 +171,8 @@ export function readFrontmatter(source) {
     const cannotRead = () => { unsupported = true; unreadable.add(owner); };
     const bad = () => { cannotRead(); invalid.add(owner); };
     const markUnclosed = () => {
+      cannotRead();
       unclosed.add(owner);
-      if (!['name', 'description'].includes(owner)) cannotRead();
     };
     if (uncertainLiteral.test(initial)) cannotRead();
     let value = comment(initial);
@@ -211,7 +224,7 @@ export function readFrontmatter(source) {
           } else out += lineBreak;
         } else break;
       }
-      if (at < lines.length && indent(lines[at]) > parent) bad(field);
+      if (at < lines.length && !ignored(lines[at]) && indent(lines[at]) > parent) bad(field);
       if (chomp !== '-') out += lineBreak;
       if (chomp === '+') out += breaks;
       return [out, at];
@@ -276,9 +289,9 @@ export function readFrontmatter(source) {
         } else out += char;
       }
     }
-    if (/^[@`]/.test(value) || (!/^[&*!\[\]{}]/.test(value) && /:[ \t]/.test(value))) bad(field);
+    if (/^[@`]/.test(value) || (!/^[&*!\[\]{}]/.test(value) && /:(?:[ \t]|$)/.test(value))) bad(field);
     if (/\t/.test(value)) bad(field);
-    if (/^(?:[&*!\[\]{}|>@`]|-(?:[ \t]|$)|\?(?:[ \t]|$))/.test(value) || /:[ \t]/.test(value)) {
+    if (/^(?:[&*!\[\]{}|>@`]|-(?:[ \t]|$)|\?(?:[ \t]|$))/.test(value) || /:(?:[ \t]|$)/.test(value)) {
       cannotRead(field);
       return [undefined, at];
     }
@@ -299,7 +312,7 @@ export function readFrontmatter(source) {
         cannotRead(field);
         return [undefined, skipCollection(at + 1, parent, continuation)];
       }
-      if (/:[ \t]/.test(continuation)) bad(field);
+      if (/:(?:[ \t]|$)/.test(continuation)) bad(field);
       if (/\t/.test(continuation)) bad(field);
       if (/^(?:-(?:[ \t]|$)|[\w-]+:[ \t])/.test(continuation)) { cannotRead(field); break; }
       parts.push((parts.length ? (blanks ? '\n'.repeat(blanks) : ' ') : '') + continuation);
@@ -364,7 +377,7 @@ export function readFrontmatter(source) {
       }
       const match = lines[at].match(keyPattern);
       if (indent(lines[at]) !== parent || !match || /\t/.test(lines[at].slice(0, indent(lines[at]) + 1))) {
-        unsupported = true;
+        cannotRead('extent');
         if (owner) cannotRead(owner);
         at++; continue;
       }
@@ -421,6 +434,9 @@ export function readFrontmatter(source) {
     return [result, at];
   }
   Object.assign(values, mapping(0, 0, 0)[0]);
+  // A syntax doubt invalidates document-level certainty: no new content FAIL
+  // may depend on a document that a strict loader could reject.
+  if (invalid.size || unclosed.size || uncertainLiteral.test(lines.join('\n'))) cannotRead('extent');
   return { values, unsupported, unclosed, unreadable, invalid, singleLine, skipped };
 }
 
@@ -457,24 +473,24 @@ if (lines[0] !== '---') {
 }
 const fm = fmEnd > 0 ? lines.slice(1, fmEnd) : [];
 const parsed = readFrontmatter(fm.join('\n') + '\n');
-const readingIssue = (field, message) => ['name', 'description'].includes(field) ? fail(message) :
-  review(`${message}; check it with a YAML parser`);
-for (const field of parsed.invalid) readingIssue(field, `frontmatter: invalid YAML in ${field}`);
-for (const field of parsed.unclosed) readingIssue(field, `frontmatter: unclosed quote in ${field}`);
-if (parsed.unsupported) review("frontmatter uses YAML the checker can't read; check it by hand with a YAML parser");
-// Unsupported CR-only documents retain the historical framing FAIL too.
-// Exact scalars can use YAML's CR breaks; uncertain syntax cannot weaken f901.
-if (parsed.unsupported && fmEnd > 0) {
-  const legacyLines = raw.split(/\r?\n/);
-  if (legacyLines[0] !== '---') fail('frontmatter: file does not open with `---` on line 1');
-  else if (!legacyLines.some((line, i) => i > 0 && line === '---')) fail('frontmatter: opening `---` never closed');
-  if (legacyLines[0] !== '---' || !legacyLines.some((line, i) => i > 0 && line === '---')) {
-    fail('frontmatter: no `name:` field');
-    fail('frontmatter: no `description:` field');
-  }
+// Frozen f901fb1c extraction. Only certain reads may disprove these rules.
+const legacyLines = raw.split(/\r?\n/);
+const legacyEnd = legacyLines.findIndex((line, i) => i > 0 && line === '---');
+const legacyFm = legacyEnd > 0 ? legacyLines.slice(1, legacyEnd).join('\n') : '';
+const legacyDescription = legacyFm.match(/^description:\s*([\s\S]*?)(?=^[a-zA-Z_-]+:|\s*$(?![\s\S]))/m);
+const extentUnknown = parsed.unreadable.has('extent') || parsed.unreadable.has('keys');
+const scalar = (field) => !extentUnknown && !parsed.unreadable.has(field) && !parsed.unclosed.has(field) && typeof parsed.values[field] === 'string' ? parsed.values[field] : null;
+for (const field of new Set([...parsed.invalid, ...parsed.unclosed])) {
+  const colon = parsed.invalid.has(field) && new RegExp('^' + field + ':.*:[ \t]', 'm').test(fm.join('\n'));
+  review(colon ? `${field} isn't valid YAML as written (a ': ' inside an unquoted value); wrap it in quotes so strict loaders accept it; check with a YAML parser` :
+    `frontmatter: ${parsed.unclosed.has(field) ? 'unclosed quote' : 'invalid YAML'} in ${field}; check it with a YAML parser`);
 }
-const scalar = (field) => !parsed.unreadable.has(field) && !parsed.unclosed.has(field) && typeof parsed.values[field] === 'string' ? parsed.values[field] : null;
-if (scalar('name') === null && !parsed.unclosed.has('name') && (!parsed.unsupported || !Object.hasOwn(parsed.values, 'name'))) fail('frontmatter: no `name:` field');
+if (parsed.unsupported && !parsed.invalid.size && !parsed.unclosed.size) review("frontmatter uses YAML the checker can't read exactly; retaining legacy checks; check it by hand with a YAML parser");
+if (extentUnknown && fmEnd > 0) {
+  if (legacyLines[0] !== '---') fail('frontmatter: file does not open with `---` on line 1');
+  else if (legacyEnd < 0) fail('frontmatter: opening `---` never closed');
+}
+if (scalar('name') === null && !/^name:\s*\S+/m.test(legacyFm)) fail('frontmatter: no `name:` field');
 const fieldFailure = (field, msg) => parsed.singleLine.has(field) ? fail(msg) :
   review(`${field} is written across lines; check by hand: ${msg}`);
 const xmlTag = /<\/?[a-zA-Z][\w:.-]*(?:[ \t\r\n][^<>]*)?[ \t\r\n]*\/?>/;
@@ -490,20 +506,13 @@ if (skillName !== null) {
 // ---- 2. Description cap ----
 const description = scalar('description');
 if (description === null) {
-  if (!parsed.unclosed.has('description') && (!parsed.unsupported || !Object.hasOwn(parsed.values, 'description'))) fail('frontmatter: no `description:` field');
-  // Preserve the pre-release cap when the reader cannot measure an exact scalar.
-  const legacyLines = raw.split(/\r?\n/);
-  const legacyEnd = legacyLines.findIndex((line, i) => i > 0 && line === '---');
-  const legacyFm = legacyEnd > 0 ? legacyLines.slice(1, legacyEnd) : [];
-  const descMatch = legacyFm.join('\n').match(new RegExp('^description:' + legacySpace + '*([^]*?)(?=^[a-zA-Z_-]+:|' + legacySpace + '*$(?![^]))', 'm'));
-  if (descMatch) {
-    // Frozen f901fb1c raw fallback: explicitly emulate its ECMAScript trim set.
-    let desc = descMatch[1].replace(new RegExp('^' + legacySpace + '+|' + legacySpace + '+$', 'g'), '');
+  if (!legacyDescription) fail('frontmatter: no `description:` field');
+  else {
+    let desc = legacyDescription[1].trim();
     const quoted = desc.startsWith('"');
+    if (quoted && !desc.endsWith('"')) fail('frontmatter: description opens with `"` but never closes it');
     if (quoted) desc = desc.slice(1, desc.endsWith('"') ? -1 : undefined);
-    if (desc.length > 1024) {
-      fail(`description: ${desc.length} chars — exceeds the official 1,024-char cap (compress: one exemplar phrase per trigger family; see references/frontmatter.md)`);
-    }
+    if (desc.length > 1024) fail(`description: ${desc.length} chars — exceeds the official 1,024-char cap (compress: one exemplar phrase per trigger family; see references/frontmatter.md)`);
   }
 } else {
   let desc = description;
@@ -512,7 +521,7 @@ if (description === null) {
   if (desc.length > 1024) {
     fail(`description: ${desc.length} chars — exceeds the official 1,024-char cap (compress: one exemplar phrase per trigger family; see references/frontmatter.md)`);
   }
-  const listingLength = desc.length + (scalar('when_to_use') ?? '').length;
+  const listingLength = scalar('when_to_use') !== null || !Object.hasOwn(parsed.values, 'when_to_use') && !extentUnknown ? desc.length + (scalar('when_to_use') ?? '').length : 0;
   if (listingLength > 1536) fieldFailure(parsed.singleLine.has('description') ? 'when_to_use' : 'description', `description + when_to_use: ${listingLength} chars — exceeds the 1,536-char listing cap (CC2)`);
   if (/\bI (?:can|will|'ll|help)\b|\bI['’](?:m|ll)\b|\byou can\b|\byou(?:['’]ll| will)\b/i.test(desc)) {
     (parsed.singleLine.has('description') ? review : (msg) => fieldFailure('description', msg))('description: write the description in third person; it is injected into the system prompt (BP6)');
@@ -661,8 +670,7 @@ function report() {
   if (fails.length === 0) {
     console.log(`validate-structure: ${name} — frontmatter ok, description within cap, routing first, ${wfFiles?.length ?? 0} workflows all routed, no stray fence headings, body ${typeof bodyLines !== 'undefined' ? bodyLines : '?'} lines within budget.`);
     reviews.forEach((note) => console.log(`REVIEW: ${note}`));
-    console.log(parsed.unsupported ? 'VERDICT: REVIEW (unsupported YAML; validate with a YAML parser)' :
-      `VERDICT: CLEAN${reviews.length ? ` (${reviews.length} REVIEW notes)` : ''}`);
+    console.log(`VERDICT: CLEAN${reviews.length ? ` (${reviews.length} REVIEW notes)` : ''}`);
     process.exit(0);
   }
   console.log(`validate-structure: ${name} — ${fails.length} FAIL(S)`);
