@@ -43,8 +43,8 @@
     },
     {
       "path": "validate-structure.mjs",
-      "sha256_raw": "dfaef8c0f41e70145a1c79fa1cf77afea26f1e79a5f7e8ad9ee3e246b8b82582",
-      "sha256_eol_normalized": "0ef8329c101148e4120446b428d862d7b2f1561fc6f820fd64357c00cecb1476"
+      "sha256_raw": "8a9d25f7fd181ce6b3a660ebe39a24c8527b3f7a54e85894c1ec1ec8280e030d",
+      "sha256_eol_normalized": "8a9d25f7fd181ce6b3a660ebe39a24c8527b3f7a54e85894c1ec1ec8280e030d"
     }
   ]
 }

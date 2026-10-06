@@ -33,8 +33,29 @@ import { fileURLToPath } from 'node:url';
 // checks advisory rather than guessing at values and rejecting a member skill.
 // Origin: 2026-10-05 Astra ship-review; PyYAML differential coverage closes
 // key-like quote continuations, unclosed fields, and plain-scalar folding gaps.
+// YAML 1.1 presentation whitespace is ASCII space/tab, not ECMAScript WhiteSpace.
+const yamlStart = text => text.replace(/^[ \t]+/, '');
+const yamlEnd = text => text.replace(/[ \t]+$/, '');
+const yamlTrim = text => yamlEnd(yamlStart(text));
+// Physical YAML breaks also separate tokens in a flow collection.
+const yamlFlowTrim = text => text.replace(/^[ \t\n]+|[ \t\n]+$/g, '');
+// Literal controls, Unicode line breaks and interior BOMs are outside this reader.
+// Escaped equivalents are decoded by the complete YAML 1.1 escape table below.
+const uncertainLiteral = { test(text) {
+  for (const char of text) {
+    const code = char.codePointAt(0);
+    if ((code < 32 && ![9, 10, 13].includes(code)) || (code >= 127 && code <= 159) ||
+        [0x2028, 0x2029, 0xfeff, 0xfffe, 0xffff].includes(code) || (code >= 0xd800 && code <= 0xdfff)) return true;
+  }
+  return false;
+} };
+// Explicit frozen ECMAScript whitespace set, solely for f901fb1c raw compatibility.
+const legacySpace = '[' + [9, 10, 11, 12, 13, 32, 0xa0, 0x1680,
+  ...Array.from({ length: 11 }, (_, n) => 0x2000 + n), 0x2028, 0x2029,
+  0x202f, 0x205f, 0x3000, 0xfeff].map(code => String.fromCharCode(code)).join('') + ']';
+
 export function readFrontmatter(source) {
-  const lines = source.replace(new RegExp(`^${String.fromCharCode(0xfeff)}`), '').split(/\r?\n/);
+  const lines = source.replace(new RegExp(`^${String.fromCharCode(0xfeff)}`), '').split(/\r\n|[\r\n]/);
   if (lines.at(-1) === '') lines.pop(); // A terminator is not an extra blank line.
   if (lines[0] === '---') {
     lines.shift();
@@ -51,27 +72,27 @@ export function readFrontmatter(source) {
   const bad = (field) => { cannotRead(field); invalid.add(field); };
   // Strip presentation whitespace, preserving a double-quoted escaped final space.
   const quotedTail = (line, quote) => {
-    if (quote !== '"') return line.trimEnd();
+    if (quote !== '"') return yamlEnd(line);
     const tail = line.match(/(\\+)([ \t]+)$/);
-    return tail && tail[1].length % 2 ? line.trimEnd() + tail[2][0] : line.trimEnd();
+    return tail && tail[1].length % 2 ? yamlEnd(line) + tail[2][0] : yamlEnd(line);
   };
   const indent = (line) => line.match(/^ */)[0].length;
-  const ignored = (line) => !line.trim() || line.trimStart().startsWith('#');
-  const comment = (value) => value.replace(/(?:^|[ \t]+)#.*$/, '').trimEnd();
+  const ignored = (line) => !yamlTrim(line) || yamlStart(line).startsWith('#');
+  const comment = (value) => yamlEnd(value.replace(/(?:^|[ \t]+)#[^\r\n]*$/, ''));
   // YAML's implicit non-string scalars are outside skill text/profile fields.
   const typed = (value) => /^(?:~|null|true|false|yes|no|on|off|[-+]?[\d.][\w.:+-]*|[-+]?\.(?:inf|nan))$/i.test(value);
-  const collection = (value) => /^(?:[&*!\[\]{}]|-(?:\s|$)|\?(?:\s|$))/.test(value);
+  const collection = (value) => /^(?:[&*!\[\]{}]|-(?:[ \t]|$)|\?(?:[ \t]|$))/.test(value);
   const skipped = new Set();
   // Read key spelling only; values of unconsumed fields are never decoded.
-  const keyPattern = /^( *)(?:([a-zA-Z_][\w-]*)|"((?:[^"\\]|\\.)*)"|'((?:[^']|'')*)'):(?:[ \t]+(.*)|$)/;
+  const keyPattern = /^( *)(?:([a-zA-Z_][\w-]*)|"((?:[^"\\]|\\.)*)"|'((?:[^']|'')*)'):(?:[ \t]+([^\r\n]*)|$)/;
   const keyOf = (match) => match[2] ?? (match[3] !== undefined ?
-    match[3].replace(/\\(["\\])/g, '$1') : match[4].replace(/''/g, "'"));
+    scalar('"' + match[3] + '"', 0, lines.length, 'key')[0] : match[4].replace(/''/g, "'"));
   // Locate presentation boundaries only. Quotes and flow brackets can cross
   // block boundaries; block scalars own all sufficiently indented physical
   // lines (including comments). No scalar types or collection items are read.
   function skipCollection(at, parent, initial = '') {
     function tokenEnd(start, text) {
-      text = text.trimStart().replace(/^(?:[&!]\S+(?:[ \t]+|$))*/, '');
+      text = yamlStart(text).replace(/^(?:[&!][^ \t\r\n]+(?:[ \t]+|$))*/, '');
       if (!/^["'[{]/.test(text)) return start;
       const stack = []; let quote = null, tokenStart = true;
       const quoted = /^["']/.test(text);
@@ -85,7 +106,7 @@ export function readFrontmatter(source) {
               if (quote === "'" && physical[k + 1] === "'") k++;
               else { quote = null; if (quoted && !stack.length) return line + 1; }
             }
-          } else if (char === '#' && (k === 0 || /\s/.test(physical[k - 1]))) break;
+          } else if (char === '#' && (k === 0 || /[ \t]/.test(physical[k - 1]))) break;
           else if ((char === '"' || char === "'") && tokenStart) { quote = char; tokenStart = false; }
           else if ((char === '[' || char === '{') && tokenStart) { stack.push(char); tokenStart = true; }
           else if (char === ']' || char === '}') {
@@ -93,21 +114,21 @@ export function readFrontmatter(source) {
             if (!stack.length) return line + 1;
             tokenStart = false;
           } else if (char === ',' || char === ':') tokenStart = true;
-          else if (!/\s/.test(char)) tokenStart = false;
+          else if (!/[ \t]/.test(char)) tokenStart = false;
         }
       }
       cannotRead('extent'); // No closer: do not guess across listing fields.
       return start;
     }
     function valueEnd(start, width, text) {
-      const bare = comment(text).trimStart().replace(/^(?:[&!]\S+(?:[ \t]+|$))*/, '');
+      const bare = yamlStart(comment(text)).replace(/^(?:[&!][^ \t\r\n]+(?:[ \t]+|$))*/, '');
       if (/^[|>]/.test(bare)) {
         const indicator = bare.match(/^[|>][+-]?([1-9])/);
         let blockWidth = indicator ? width + Number(indicator[1]) : null;
         let end = start;
-        while (end < lines.length && !lines[end].trim()) end++;
+        while (end < lines.length && !yamlTrim(lines[end])) end++;
         if (blockWidth === null) blockWidth = Math.max(width + 1, end < lines.length ? indent(lines[end]) : width + 1);
-        while (start < lines.length && (!lines[start].trim() || indent(lines[start]) >= blockWidth)) start++;
+        while (start < lines.length && (!yamlTrim(lines[start]) || indent(lines[start]) >= blockWidth)) start++;
         return start;
       }
       if (bare && !/^["'[{]/.test(bare)) {
@@ -121,8 +142,8 @@ export function readFrontmatter(source) {
     at = valueEnd(at, parent, initial);
     while (at < lines.length) {
       if (ignored(lines[at])) { at++; continue; }
-      const width = indent(lines[at]), text = lines[at].trimStart();
-      if (width < parent || (width === parent && !/^-(?:\s|$)/.test(text))) break;
+      const width = indent(lines[at]), text = yamlStart(lines[at]);
+      if (width < parent || (width === parent && !/^-(?:[ \t]|$)/.test(text))) break;
       // Compact sequence mappings have their own indentation after the dash.
       const dash = text.match(/^(?:- +)+/);
       const payload = dash ? text.slice(dash[0].length) : text;
@@ -140,10 +161,11 @@ export function readFrontmatter(source) {
       unclosed.add(owner);
       if (!['name', 'description'].includes(owner)) cannotRead();
     };
+    if (uncertainLiteral.test(initial)) cannotRead();
     let value = comment(initial);
     // Retain the profile's supported, single-line models list.
     if (field === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(value)) {
-      const items = value.slice(1, -1).split(',').map(item => item.trim());
+      const items = value.slice(1, -1).split(',').map(item => yamlTrim(item));
       if (items.some(typed)) cannotRead(field);
       return [items, at];
     }
@@ -203,14 +225,14 @@ export function readFrontmatter(source) {
             if (quote === '"' && text[k] === '\\') { k++; continue; }
             if (text[k] !== quote) continue;
             if (quote === "'" && text[k + 1] === "'") { k++; continue; }
-            return !comment(text.slice(k + 1)).trim();
+            return !yamlTrim(comment(text.slice(k + 1)));
           }
         }
         return false;
       };
       let text = quotedTail(initial.slice(1), quote), out = '', k = 0, continuedEscape = false;
       const escapes = { '0': 0, a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13,
-        e: 27, ' ': 32, '"': 34, '/': 47, '\\': 92, N: 0x85, _: 0xa0, L: 0x2028, P: 0x2029 };
+        e: 27, [String.fromCharCode(9)]: 9, ' ': 32, '"': 34, '/': 47, '\\': 92, N: 0x85, _: 0xa0, L: 0x2028, P: 0x2029 };
       while (true) {
         if (k >= text.length) {
           if (at >= lines.length) {
@@ -218,24 +240,24 @@ export function readFrontmatter(source) {
             return [out, at];
           }
           let blanks = 0;
-          while (at < lines.length && !lines[at].trim()) { blanks++; at++; }
+          while (at < lines.length && !yamlTrim(lines[at])) { blanks++; at++; }
           if (at >= lines.length) {
             markUnclosed();
             return [out, at];
           }
           // Recover listing fields after an unrelated broken quoted value.
-          if (!['name', 'description'].includes(owner) && /^(?:name|description):(?:\s|$)/.test(lines[at]) && !closesAhead(at)) {
+          if (!['name', 'description'].includes(owner) && /^(?:name|description):(?:[ \t]|$)/.test(lines[at]) && !closesAhead(at)) {
             markUnclosed();
             return [out, at];
           }
           out += blanks ? '\n'.repeat(blanks) : continuedEscape ? '' : ' ';
           continuedEscape = false;
-          text += quotedTail(lines[at++].trimStart(), quote);
+          text += quotedTail(yamlStart(lines[at++]), quote);
         }
         const char = text[k++];
         if (char === quote) {
           if (quote === "'" && text[k] === "'") { out += "'"; k++; continue; }
-          if (comment(text.slice(k)).trim()) bad(field);
+          if (yamlTrim(comment(text.slice(k)))) bad(field);
           return [out, at];
         }
         if (quote === '"' && char === '\\') {
@@ -254,39 +276,42 @@ export function readFrontmatter(source) {
         } else out += char;
       }
     }
-    if (/^[@`]/.test(value) || (!/^[&*!\[\]{}]/.test(value) && /:\s/.test(value)) || /\t/.test(value)) bad(field);
-    if (/^(?:[&*!\[\]{}|>@`]|-(?:\s|$)|\?(?:\s|$))/.test(value) || /:\s/.test(value)) {
+    if (/^[@`]/.test(value) || (!/^[&*!\[\]{}]/.test(value) && /:[ \t]/.test(value))) bad(field);
+    if (/\t/.test(value)) bad(field);
+    if (/^(?:[&*!\[\]{}|>@`]|-(?:[ \t]|$)|\?(?:[ \t]|$))/.test(value) || /:[ \t]/.test(value)) {
       cannotRead(field);
       return [undefined, at];
     }
-    const parts = value.trim() ? [value.trim()] : [];
-    let blanks = 0, commented = comment(initial) !== initial.trimEnd();
+    const parts = yamlTrim(value) ? [yamlTrim(value)] : [];
+    let blanks = 0, commented = comment(initial) !== yamlEnd(initial);
     if (typed(value)) cannotRead(field);
     while (at < lines.length) {
       if (ignored(lines[at])) {
-        if (!lines[at].trim() && /\t/.test(lines[at])) bad(field);
-        if (lines[at].trim()) commented = true;
+        if (!yamlTrim(lines[at]) && /\t/.test(lines[at])) bad(field);
+        if (yamlTrim(lines[at])) commented = true;
         else blanks++;
         at++; continue;
       }
       if (indent(lines[at]) <= parent) break;
       if (commented && parts.length) bad(field);
-      const continuation = comment(lines[at].trim());
+      const continuation = comment(yamlTrim(lines[at]));
       if (collection(continuation)) {
         cannotRead(field);
         return [undefined, skipCollection(at + 1, parent, continuation)];
       }
-      if (/\t|:\s/.test(continuation)) bad(field);
-      if (/^(?:-(?:\s|$)|[\w-]+:\s)/.test(continuation)) { cannotRead(field); break; }
+      if (/:[ \t]/.test(continuation)) bad(field);
+      if (/\t/.test(continuation)) bad(field);
+      if (/^(?:-(?:[ \t]|$)|[\w-]+:[ \t])/.test(continuation)) { cannotRead(field); break; }
       parts.push((parts.length ? (blanks ? '\n'.repeat(blanks) : ' ') : '') + continuation);
       blanks = 0;
-      commented = continuation !== lines[at].trim();
+      commented = continuation !== yamlTrim(lines[at]);
       at++;
     }
     if (!parts.length) cannotRead(field); // YAML null is outside text fields.
     return [parts.join(''), at];
   }
   function flowMetadata(text) {
+    if (uncertainLiteral.test(text)) cannotRead('metadata');
     const result = Object.create(null);
     let quote = null, level = 0, part = '', parts = [], tokenStart = true;
     for (let k = 1; k < text.length - 1; k++) {
@@ -298,25 +323,29 @@ export function readFrontmatter(source) {
           if (quote === "'" && text[k + 1] === "'") part += text[++k];
           else quote = null;
         }
-      } else if (char === '#' && (k === 0 || /\s/.test(text[k - 1]))) {
+      } else if (char === '#' && (k === 0 || /[ \t\n]/.test(text[k - 1]))) {
         while (k < text.length && text[k] !== '\n') k++;
         part += '\n';
       } else if ((char === '"' || char === "'") && tokenStart) { quote = char; part += char; tokenStart = false; }
       else if ((char === '[' || char === '{') && tokenStart) { level++; part += char; tokenStart = true; }
       else if (char === ']' || char === '}') { level--; part += char; tokenStart = false; }
       else if (char === ',' && level === 0) { parts.push(part); part = ''; tokenStart = true; }
-      else { part += char; if (char === ',' || char === ':') tokenStart = true; else if (!/\s/.test(char)) tokenStart = false; }
+      else { part += char; if (char === ',' || char === ':') tokenStart = true; else if (!/[ \t\n]/.test(char)) tokenStart = false; }
     }
     parts.push(part);
-    for (const entry of parts.filter(part => part.trim())) {
-      const match = entry.trim().replaceAll('\n', ' ').replace(/^((?:"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')):(?=\S)/, '$1: ').match(keyPattern);
+    for (const entry of parts.filter(part => yamlFlowTrim(part))) {
+      const match = yamlFlowTrim(entry).replaceAll('\n', ' ').replace(/^((?:"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')):(?=[^ \t\r\n])/, '$1: ').match(keyPattern);
       if (!match) { cannotRead('metadata'); continue; }
       const key = keyOf(match), value = match[5] ?? '';
+      // Flattening a scalar's internal breaks would guess at YAML folding.
+      const presentation = yamlFlowTrim(entry).slice(yamlFlowTrim(entry).indexOf(':') + 1);
+      if (['stakes', 'freedom', 'weight', 'models'].includes(key) && /\n/.test(yamlFlowTrim(presentation)) &&
+          !collection(yamlTrim(value))) cannotRead('metadata');
       if (Object.hasOwn(result, key) && ['stakes', 'freedom', 'weight', 'models'].includes(key)) cannotRead('metadata');
       result[key] = undefined;
       if (!['stakes', 'freedom', 'weight', 'models'].includes(key) ||
-          (key !== 'stakes' && collection(value.trim()) && !(key === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(value.trim()) && !value.trim().slice(1, -1).split(',').some(item => typed(item.trim()))))) skipped.add(`metadata.${key}`);
-      else result[key] = scalar(value.trim(), 0, lines.length, key, 'metadata')[0];
+          (key !== 'stakes' && collection(yamlTrim(value)) && !(key === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(yamlTrim(value)) && !yamlTrim(value).slice(1, -1).split(',').some(item => typed(yamlTrim(item)))))) skipped.add(`metadata.${key}`);
+      else result[key] = scalar(yamlTrim(value), 0, lines.length, key, 'metadata')[0];
     }
     return result;
   }
@@ -328,9 +357,9 @@ export function readFrontmatter(source) {
       const explicit = lines[at].match(/^ *\? +([a-zA-Z_][\w-]*)$/);
       if (explicit && indent(lines[at]) === parent) {
         let next = at + 1; while (next < lines.length && ignored(lines[next])) next++;
-        if (next < lines.length && indent(lines[next]) === parent && /^: +/.test(lines[next].trimStart())) {
+        if (next < lines.length && indent(lines[next]) === parent && /^: +/.test(yamlStart(lines[next]))) {
           result[explicit[1]] = undefined; skipped.add(owner ? `${owner}.${explicit[1]}` : explicit[1]);
-          at = skipCollection(next + 1, parent, lines[next].trimStart().slice(2)); continue;
+          at = skipCollection(next + 1, parent, yamlStart(lines[next]).slice(2)); continue;
         }
       }
       const match = lines[at].match(keyPattern);
@@ -339,13 +368,15 @@ export function readFrontmatter(source) {
         if (owner) cannotRead(owner);
         at++; continue;
       }
-      const key = keyOf(match), initial = (match[5] ?? '').trimStart();
+      const key = keyOf(match);
+      if (typeof key !== 'string' || uncertainLiteral.test(key)) cannotRead(owner ?? 'keys');
+      const initial = yamlStart(match[5] ?? '');
       at++;
       const valueStart = at;
       if (Object.hasOwn(result, key) && (depth === 0 ? ['name', 'description', 'when_to_use', 'metadata'].includes(key) : ['stakes', 'freedom', 'weight', 'models'].includes(key))) cannotRead(owner ?? key);
       let next = at;
       while (next < lines.length && ignored(lines[next])) {
-        if (!comment(initial) && !lines[next].trim() && /\t/.test(lines[next]) &&
+        if (!comment(initial) && !yamlTrim(lines[next]) && /\t/.test(lines[next]) &&
             (depth === 0 ? ['name', 'description', 'when_to_use', 'metadata'].includes(key) :
               ['stakes', 'freedom', 'weight', 'models'].includes(key))) bad(owner ?? key);
         next++;
@@ -358,14 +389,17 @@ export function readFrontmatter(source) {
       const opaque = depth === 0 ? !['name', 'description', 'when_to_use', 'metadata'].includes(key) :
         !['stakes', 'freedom', 'weight', 'models'].includes(key);
       const supportedModels = key === 'models' && /^\[[a-zA-Z0-9_. -]+(?:,[a-zA-Z0-9_. -]+)*\]$/.test(comment(initial)) &&
-        !comment(initial).slice(1, -1).split(',').some(item => typed(item.trim()));
+        !comment(initial).slice(1, -1).split(',').some(item => typed(yamlTrim(item)));
       // Retain the existing advisory profile policy for non-text collections.
       const profileCollection = depth > 0 && key !== 'stakes' && !supportedModels &&
         (collection(initial) || (!comment(initial) && next < lines.length &&
-          (keyPattern.test(lines[next]) || /^-(?:\s|$)/.test(lines[next].trimStart()))));
+          (keyPattern.test(lines[next]) || /^-(?:[ \t]|$)/.test(yamlStart(lines[next])))));
       if (opaque || profileCollection) {
         result[key] = undefined; skipped.add(owner ? `${owner}.${key}` : key);
-        at = skipCollection(at, parent, initial); continue;
+        const collectionStart = at;
+        at = skipCollection(at, parent, initial);
+        if (!opaque && uncertainLiteral.test([initial, ...lines.slice(collectionStart, at)].join('\n'))) cannotRead(owner ?? key);
+        continue;
       }
       if (!comment(initial) && next < lines.length && indent(lines[next]) > parent &&
           (keyPattern.test(lines[next]) || /^ *\? +[a-zA-Z_][\w-]*$/.test(lines[next]))) {
@@ -376,9 +410,10 @@ export function readFrontmatter(source) {
       } else {
         let start = initial, scalarAt = at;
         if (!comment(initial) && next < lines.length && indent(lines[next]) > parent) {
-          start = lines[next].trimStart(); scalarAt = next + 1;
+          start = yamlStart(lines[next]); scalarAt = next + 1;
         }
         [result[key], at] = scalar(start, parent, scalarAt, key, owner ?? key);
+        if (uncertainLiteral.test([start, ...lines.slice(valueStart, at)].join('\n'))) cannotRead(owner ?? key);
         if (depth === 0 && initial && !/^[|>]/.test(initial) && (!/^["']/.test(initial) || at === valueStart) &&
             !lines.slice(valueStart, at).some(line => !ignored(line))) singleLine.add(key);
       }
@@ -410,7 +445,7 @@ if (!existsSync(skillPath)) {
 }
 
 const raw = readFileSync(skillPath, 'utf8').replace(new RegExp(`^${String.fromCharCode(0xfeff)}`), '');
-const lines = raw.split(/\r?\n/);
+const lines = raw.split(/\r\n|[\r\n]/);
 
 // ---- 1. Frontmatter ----
 let fmEnd = -1;
@@ -427,11 +462,22 @@ const readingIssue = (field, message) => ['name', 'description'].includes(field)
 for (const field of parsed.invalid) readingIssue(field, `frontmatter: invalid YAML in ${field}`);
 for (const field of parsed.unclosed) readingIssue(field, `frontmatter: unclosed quote in ${field}`);
 if (parsed.unsupported) review("frontmatter uses YAML the checker can't read; check it by hand with a YAML parser");
+// Unsupported CR-only documents retain the historical framing FAIL too.
+// Exact scalars can use YAML's CR breaks; uncertain syntax cannot weaken f901.
+if (parsed.unsupported && fmEnd > 0) {
+  const legacyLines = raw.split(/\r?\n/);
+  if (legacyLines[0] !== '---') fail('frontmatter: file does not open with `---` on line 1');
+  else if (!legacyLines.some((line, i) => i > 0 && line === '---')) fail('frontmatter: opening `---` never closed');
+  if (legacyLines[0] !== '---' || !legacyLines.some((line, i) => i > 0 && line === '---')) {
+    fail('frontmatter: no `name:` field');
+    fail('frontmatter: no `description:` field');
+  }
+}
 const scalar = (field) => !parsed.unreadable.has(field) && !parsed.unclosed.has(field) && typeof parsed.values[field] === 'string' ? parsed.values[field] : null;
 if (scalar('name') === null && !parsed.unclosed.has('name') && (!parsed.unsupported || !Object.hasOwn(parsed.values, 'name'))) fail('frontmatter: no `name:` field');
 const fieldFailure = (field, msg) => parsed.singleLine.has(field) ? fail(msg) :
   review(`${field} is written across lines; check by hand: ${msg}`);
-const xmlTag = /<\/?[a-zA-Z][\w:.-]*(?:\s[^<>]*)?\s*\/?>/;
+const xmlTag = /<\/?[a-zA-Z][\w:.-]*(?:[ \t\r\n][^<>]*)?[ \t\r\n]*\/?>/;
 const skillName = scalar('name');
 if (skillName !== null) {
   if (skillName.length < 1 || skillName.length > 64) fieldFailure('name', 'name: must be 1–64 characters (BP4)');
@@ -446,9 +492,13 @@ const description = scalar('description');
 if (description === null) {
   if (!parsed.unclosed.has('description') && (!parsed.unsupported || !Object.hasOwn(parsed.values, 'description'))) fail('frontmatter: no `description:` field');
   // Preserve the pre-release cap when the reader cannot measure an exact scalar.
-  const descMatch = fm.join('\n').match(/^description:\s*([\s\S]*?)(?=^[a-zA-Z_-]+:|\s*$(?![\s\S]))/m);
+  const legacyLines = raw.split(/\r?\n/);
+  const legacyEnd = legacyLines.findIndex((line, i) => i > 0 && line === '---');
+  const legacyFm = legacyEnd > 0 ? legacyLines.slice(1, legacyEnd) : [];
+  const descMatch = legacyFm.join('\n').match(new RegExp('^description:' + legacySpace + '*([^]*?)(?=^[a-zA-Z_-]+:|' + legacySpace + '*$(?![^]))', 'm'));
   if (descMatch) {
-    let desc = descMatch[1].trim();
+    // Frozen f901fb1c raw fallback: explicitly emulate its ECMAScript trim set.
+    let desc = descMatch[1].replace(new RegExp('^' + legacySpace + '+|' + legacySpace + '+$', 'g'), '');
     const quoted = desc.startsWith('"');
     if (quoted) desc = desc.slice(1, desc.endsWith('"') ? -1 : undefined);
     if (desc.length > 1024) {
@@ -457,7 +507,7 @@ if (description === null) {
   }
 } else {
   let desc = description;
-  if (!desc.trim()) fieldFailure('description', 'description: must be non-empty (BP4)');
+  if (!yamlTrim(desc)) fieldFailure('description', 'description: must be non-empty (BP4)');
   if (xmlTag.test(desc)) fieldFailure('description', 'description: XML tags are not allowed (BP4)');
   if (desc.length > 1024) {
     fail(`description: ${desc.length} chars — exceeds the official 1,024-char cap (compress: one exemplar phrase per trigger family; see references/frontmatter.md)`);
