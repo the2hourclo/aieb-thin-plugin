@@ -126,7 +126,8 @@ const NUDGE_GENERIC =
   'roadmap and the next move." Don\'t push — if the user is clearly here to do ' +
   "something specific, let them get to it; if they decline, accept it and stay " +
   "silent. If their first message is already about the roadmap or what to build next, " +
-  "just invoke the `roadmap` skill — don't double-offer.";
+  "just invoke the `roadmap` skill — don't double-offer." +
+  ' One exception: "what should I build or fix next", "run my first review" and "check our bets" are review asks; when the self-improving-ai skill is in the skill list they go to it, not to roadmap.';
 
 // Turn the state's `next` block into a SPECIFIC nudge — the whole point of the state
 // layer: Claude opens already knowing the roadmap, so the user is never lost.
@@ -138,7 +139,8 @@ function buildNudge(n) {
   const tail =
     " Don't push — if the user is clearly here to do something specific, let them get to it; if they decline, " +
     "accept it and stay silent. If their first message is already about the roadmap or building, just act on it " +
-    "— don't double-offer.";
+    "— don't double-offer." +
+    ' One exception: "what should I build or fix next", "run my first review" and "check our bets" are review asks; when the self-improving-ai skill is in the skill list they go to it, not to roadmap.';
   if (n.blocker) {
     const what = n.item && n.item.build ? n.item.build : "your next build";
     return head + `"Heads up — ${what} is ready to build except for one thing: ${n.blocker}. Want to sort that out so I can build it for you?"` + tail;
