@@ -13,7 +13,7 @@ const BET = "- 2026-11-16 · NEW · B-2026-11-16-faq · BET: FAQ lifts bookings 
 // calls: [{ name, input, error }] — each becomes a tool_use plus its tool_result.
 // The chat "began" 10 minutes ago (record timestamps). `before` files are dated
 // an hour before that; `during` files are written now, i.e. by this chat.
-function setup({ autoBets = true, calls = [], text = "", unanswered = false, before = {}, during = {}, stamped = true } = {}) {
+function setup({ autoBets = true, calls = [], text = "", unanswered = false, before = {}, during = {}, after = null, stamped = true } = {}) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aieb-bet-stop-"));
   const ws = path.join(tmp, "ws");
   fs.mkdirSync(path.join(ws, "digital-assets", "systems-thinking"), { recursive: true });
@@ -28,6 +28,10 @@ function setup({ autoBets = true, calls = [], text = "", unanswered = false, bef
   if (autoBets !== null)
     fs.utimesSync(put("digital-assets/systems-thinking/SETTINGS.md", `- 2026-11-16 · auto bets · ${autoBets ? "yes" : "no"} · x\n`), old, old);
   for (const [rel, body] of Object.entries(before)) fs.utimesSync(put(rel, body), old, old);
+  // folders made by setup are dated before the chat too, so only this chat's moves show
+  const age = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) if (e.isDirectory()) age(path.join(d, e.name)); fs.utimesSync(d, old, old); };
+  age(ws);
+  if (after) after(ws);
   for (const [rel, body] of Object.entries(during)) put(rel, body);
   const timestamp = stamped ? new Date(began).toISOString() : undefined;
   const lines = [];
@@ -111,6 +115,23 @@ test("a shell command counts by what changed on disk, not by its wording (Astra 
   assert.equal(stop(setup({ calls: [py], during: { "node_modules/x/i.js": "1", ".git/HEAD": "x", "digital-assets/systems-thinking/bets-page.html": "<p>" } })).stdout, "");
   // no timestamps in the transcript: shell evidence can't be judged, so silent
   assert.equal(stop(setup({ calls: [py], during: { "pages/a.md": "new" }, stamped: false })).stdout, "");
+});
+
+test("shell changes Astra round 3 named: .claude/skills writes, deletes and renames count", () => {
+  const sh = { name: "Bash", input: { command: "python tidy.py" } };
+  assert.ok(blocks(stop(setup({ calls: [sh], during: { ".claude/skills/my-skill/SKILL.md": "x" } }))));
+  assert.ok(blocks(stop(setup({ calls: [sh], before: { ".claude/skills/my-skill/SKILL.md": "x" },
+    after: (ws) => fs.appendFileSync(path.join(ws, ".claude/skills/my-skill/SKILL.md"), "y") }))));
+  // a page deleted: no file is newer, but its folder moved
+  assert.ok(blocks(stop(setup({ calls: [sh], before: { "pages/a.md": "a", "pages/b.md": "b" },
+    after: (ws) => fs.rmSync(path.join(ws, "pages/b.md")) }))));
+  // a page renamed, keeping its old date
+  assert.ok(blocks(stop(setup({ calls: [sh], before: { "pages/a.md": "a" },
+    after: (ws) => fs.renameSync(path.join(ws, "pages/a.md"), path.join(ws, "pages/c.md")) }))));
+  // a deleted top-level page counts too
+  assert.ok(blocks(stop(setup({ calls: [sh], before: { "notes.md": "n" }, after: (ws) => fs.rmSync(path.join(ws, "notes.md")) }))));
+  // .claude bookkeeping alone stays silent, even when the file is new
+  assert.equal(stop(setup({ calls: [sh], before: { "pages/a.md": "a" }, during: { ".claude/settings.local.json": "{}" } })).stdout, "");
 });
 
 test("a denied or unanswered edit doesn't count as a change", () => {

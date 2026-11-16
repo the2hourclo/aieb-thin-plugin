@@ -5,8 +5,9 @@
  * Fires only in a folder where the owner said yes to automatic bets
  * (newest `auto bets` line in digital-assets/systems-thinking/SETTINGS.md is
  * `yes`). If this chat successfully changed a file outside the skill's own
- * bookkeeping (an edit tool's target or, after a shell command, a file on disk
- * modified since the chat began), and BETS.md got no NEW bet line in this chat
+ * bookkeeping (an edit tool's target or, after a shell command, a file or
+ * folder on disk changed since the chat began, so deletes and renames count),
+ * and BETS.md got no NEW bet line in this chat
  * (an edit adding one, or the file on disk changed since the chat began and
  * holds one), Claude is
  * stopped ONCE and asked to run the Self-Improving AI Skill's Quiet save (or
@@ -70,27 +71,44 @@ function bookkeeping(rel) {
   return false;
 }
 
-// Files under root (not bookkeeping) modified at or after `since`. Bounded walk.
+// Anything under root (not bookkeeping) changed at or after `since`. Bounded walk.
+// A file counts by its own mtime; a folder counts by its mtime too, which moves
+// when an entry inside it is added, deleted or renamed (Astra round 3).
 function changedOnDisk(root, since) {
   const found = [];
   let seen = 0;
-  const walk = (dir, depth) => {
+  const recent = (p) => { try { return fs.statSync(p).mtimeMs >= since; } catch { return false; } };
+  const born = (p) => { try { return fs.statSync(p).birthtimeMs >= since; } catch { return false; } };
+  const ignored = (name, r) => SKIP_DIRS.has(name) || (r.replace(/\\/g, "/") !== ".claude" && bookkeeping(r + "/"));
+  const walk = (dir, rel, depth) => {
     if (depth > 8 || seen > SCAN_LIMIT || found.length) return;
     let entries;
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    // .claude itself is bookkeeping, but members build inside its skills,
+    // agents, commands and hooks, so walk through it without counting it.
+    // A folder whose new entry is bookkeeping or a skipped folder (a fresh
+    // node_modules, the bets page) is explained by that, so it doesn't count.
+    if (rel.replace(/\\/g, "/") !== ".claude" && recent(dir)) {
+      const explained = entries.some((e) => {
+        const r = path.join(rel, e.name);
+        // a new .claude folder explains its parent too: anything built inside
+        // it is still found by the walk below
+        return (e.isDirectory() ? SKIP_DIRS.has(e.name) || bookkeeping(r + "/") : bookkeeping(r)) && born(path.join(dir, e.name));
+      });
+      if (!explained) { found.push(rel || "."); return; }
+    }
     for (const e of entries) {
       if (++seen > SCAN_LIMIT || found.length) return;
       const full = path.join(dir, e.name);
-      const rel = path.relative(root, full);
-      if (bookkeeping(rel)) continue;
+      const r = path.join(rel, e.name);
       if (e.isDirectory()) {
-        if (!SKIP_DIRS.has(e.name)) walk(full, depth + 1);
-      } else if (e.isFile()) {
-        try { if (fs.statSync(full).mtimeMs >= since) found.push(rel); } catch {}
+        if (!ignored(e.name, r)) walk(full, r, depth + 1);
+      } else if (e.isFile() && !bookkeeping(r) && recent(full)) {
+        found.push(r);
       }
     }
   };
-  walk(root, 0);
+  walk(root, "", 0);
   return found;
 }
 
