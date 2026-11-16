@@ -143,6 +143,13 @@ test("shell changes Astra round 3 named: .claude/skills writes, deletes and rena
     after: (ws) => { fs.rmSync(path.join(ws, "web/node_modules"), { recursive: true }); fs.rmSync(path.join(ws, "notes.md")); } }))));
   assert.equal(stop(setup({ calls: [{ name: "PowerShell", input: { command: "Remove-Item -Recurse ./node_modules" } }], before: { "node_modules/i.js": "1" },
     after: (ws) => fs.rmSync(path.join(ws, "node_modules"), { recursive: true }) })).stdout, "");
+  // folders sharing a suffix (Astra round 5): appweb/node_modules doesn't name web/node_modules
+  assert.ok(blocks(stop(setup({ calls: [{ name: "Bash", input: { command: "rm -rf appweb/node_modules; rm web/landing.md" } }],
+    before: { "web/landing.md": "l", "appweb/node_modules/i.js": "1" },
+    after: (ws) => { fs.rmSync(path.join(ws, "appweb/node_modules"), { recursive: true }); fs.rmSync(path.join(ws, "web/landing.md")); } }))));
+  // ...while a cleanup that names the exact nested folder stays silent
+  assert.equal(stop(setup({ calls: [{ name: "Bash", input: { command: "rm -rf ./web/node_modules" } }], before: { "web/node_modules/i.js": "1" },
+    after: (ws) => fs.rmSync(path.join(ws, "web/node_modules"), { recursive: true }) })).stdout, "");
   // .claude bookkeeping alone stays silent, even when the file is new
   assert.equal(stop(setup({ calls: [sh], before: { "pages/a.md": "a" }, during: { ".claude/settings.local.json": "{}" } })).stdout, "");
 });

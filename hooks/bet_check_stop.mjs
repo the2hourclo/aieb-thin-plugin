@@ -101,10 +101,11 @@ function changedOnDisk(root, since, shellText = "") {
       const present = new Set(entries.map((e) => e.name));
       // The command must name this folder's own child (bare at the top, else
       // by its path), so a cleanup elsewhere can't hide a deleted page here.
+      // Whole path tokens only: "appweb/node_modules" never names "web/node_modules".
+      const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const named = (n) => {
-        if (!rel) return new RegExp(`(^|[\\s"'=]|\\.[/\\\\])${n.replace(".", "\\.")}([\\s"'/\\\\]|$)`).test(shellText);
-        const p = path.join(rel, n).replace(/\\/g, "/");
-        return shellText.replace(/\\/g, "/").includes(p);
+        const p = esc(rel ? path.join(rel, n).replace(/\\/g, "/") : n);
+        return new RegExp(`(^|[\\s"'=;&|(]|\\./)${p}([\\s"'/;&|)]|$)`).test(shellText.replace(/\\/g, "/"));
       };
       const cleanup = [...SKIP_DIRS].some((n) => !present.has(n) && named(n));
       if (!explained && !cleanup) { found.push(rel || "."); return; }
