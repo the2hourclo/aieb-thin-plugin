@@ -74,7 +74,7 @@ function bookkeeping(rel) {
 // Anything under root (not bookkeeping) changed at or after `since`. Bounded walk.
 // A file counts by its own mtime; a folder counts by its mtime too, which moves
 // when an entry inside it is added, deleted or renamed (Astra round 3).
-function changedOnDisk(root, since) {
+function changedOnDisk(root, since, shellText = "") {
   const found = [];
   let seen = 0;
   const recent = (p) => { try { return fs.statSync(p).mtimeMs >= since; } catch { return false; } };
@@ -95,7 +95,19 @@ function changedOnDisk(root, since) {
         // it is still found by the walk below
         return (e.isDirectory() ? SKIP_DIRS.has(e.name) || bookkeeping(r + "/") : bookkeeping(r)) && born(path.join(dir, e.name));
       });
-      if (!explained) { found.push(rel || "."); return; }
+      // A skipped folder (node_modules, .cache) that a shell command named and
+      // that is now gone explains it too: cache cleanup is not member work.
+      // Command text only ever explains a change away here; it never adds one.
+      const present = new Set(entries.map((e) => e.name));
+      // The command must name this folder's own child (bare at the top, else
+      // by its path), so a cleanup elsewhere can't hide a deleted page here.
+      const named = (n) => {
+        if (!rel) return new RegExp(`(^|[\\s"'=]|\\.[/\\\\])${n.replace(".", "\\.")}([\\s"'/\\\\]|$)`).test(shellText);
+        const p = path.join(rel, n).replace(/\\/g, "/");
+        return shellText.replace(/\\/g, "/").includes(p);
+      };
+      const cleanup = [...SKIP_DIRS].some((n) => !present.has(n) && named(n));
+      if (!explained && !cleanup) { found.push(rel || "."); return; }
     }
     for (const e of entries) {
       if (++seen > SCAN_LIMIT || found.length) return;
@@ -153,6 +165,7 @@ function readTranscript(file, cwd) {
   const changed = [];
   let betSaved = false;
   let shellRan = false;
+  let shellText = "";
   for (const part of calls) {
     if (!part.id || !ok.has(part.id)) continue;
     if (WRITE_TOOLS.has(part.name)) {
@@ -167,6 +180,7 @@ function readTranscript(file, cwd) {
       if (!bookkeeping(rel)) changed.push(rel);
     } else if (SHELL_TOOLS.has(part.name)) {
       shellRan = true;
+      shellText += " " + String(part.input?.command || "");
     }
   }
   // Evidence on disk, judged from when this chat began. Without a timestamp
@@ -181,7 +195,7 @@ function readTranscript(file, cwd) {
         for (const m of fs.readFileSync(ledger, "utf8").matchAll(DATED_BET)) if (m[1] >= day) betSaved = true;
       }
     } catch {}
-    if (shellRan && !changed.length) changed.push(...changedOnDisk(root, since));
+    if (shellRan && !changed.length) changed.push(...changedOnDisk(root, since, shellText));
   }
   return { changed, betSaved, noBet };
 }

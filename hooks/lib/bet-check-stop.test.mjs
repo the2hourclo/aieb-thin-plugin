@@ -130,6 +130,19 @@ test("shell changes Astra round 3 named: .claude/skills writes, deletes and rena
     after: (ws) => fs.renameSync(path.join(ws, "pages/a.md"), path.join(ws, "pages/c.md")) }))));
   // a deleted top-level page counts too
   assert.ok(blocks(stop(setup({ calls: [sh], before: { "notes.md": "n" }, after: (ws) => fs.rmSync(path.join(ws, "notes.md")) }))));
+  // cache cleanup alone stays silent (Astra round 4); a page deleted beside it still counts
+  const clean = { name: "Bash", input: { command: "rm -rf node_modules web/.cache" } };
+  assert.equal(stop(setup({ calls: [clean], before: { "pages/a.md": "a", "node_modules/x/i.js": "1", "web/.cache/c": "1" },
+    after: (ws) => { fs.rmSync(path.join(ws, "node_modules"), { recursive: true }); fs.rmSync(path.join(ws, "web/.cache"), { recursive: true }); } })).stdout, "");
+  assert.ok(blocks(stop(setup({ calls: [clean], before: { "pages/a.md": "a", "pages/b.md": "b", "node_modules/x/i.js": "1" },
+    after: (ws) => { fs.rmSync(path.join(ws, "node_modules"), { recursive: true }); fs.rmSync(path.join(ws, "pages/b.md")); } }))));
+  // a cleanup named elsewhere can't hide a page deleted in another folder
+  assert.ok(blocks(stop(setup({ calls: [{ name: "Bash", input: { command: "rm -rf web/node_modules" } }], before: { "pages/a.md": "a", "pages/b.md": "b", "web/node_modules/i.js": "1" },
+    after: (ws) => { fs.rmSync(path.join(ws, "web/node_modules"), { recursive: true }); fs.rmSync(path.join(ws, "pages/b.md")); } }))));
+  assert.ok(blocks(stop(setup({ calls: [{ name: "Bash", input: { command: "rm -rf web/node_modules" } }], before: { "notes.md": "n", "web/node_modules/i.js": "1" },
+    after: (ws) => { fs.rmSync(path.join(ws, "web/node_modules"), { recursive: true }); fs.rmSync(path.join(ws, "notes.md")); } }))));
+  assert.equal(stop(setup({ calls: [{ name: "PowerShell", input: { command: "Remove-Item -Recurse ./node_modules" } }], before: { "node_modules/i.js": "1" },
+    after: (ws) => fs.rmSync(path.join(ws, "node_modules"), { recursive: true }) })).stdout, "");
   // .claude bookkeeping alone stays silent, even when the file is new
   assert.equal(stop(setup({ calls: [sh], before: { "pages/a.md": "a" }, during: { ".claude/settings.local.json": "{}" } })).stdout, "");
 });
