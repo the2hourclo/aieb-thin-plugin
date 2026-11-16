@@ -4,9 +4,11 @@
  *
  * Fires only in a folder where the owner said yes to automatic bets
  * (newest `auto bets` line in digital-assets/systems-thinking/SETTINGS.md is
- * `yes`). If this chat successfully changed a file (an edit tool, or a shell
- * command that writes) outside the skill's own bookkeeping files, and did not
- * append a NEW bet line to digital-assets/systems-thinking/BETS.md, Claude is
+ * `yes`). If this chat successfully changed a file outside the skill's own
+ * bookkeeping (an edit tool's target or, after a shell command, a file on disk
+ * modified since the chat began), and BETS.md got no NEW bet line in this chat
+ * (an edit adding one, or the file on disk changed since the chat began and
+ * holds one), Claude is
  * stopped ONCE and asked to run the Self-Improving AI Skill's Quiet save (or
  * to say why no bet fits).
  *
@@ -28,16 +30,13 @@ const SHELL_TOOLS = new Set(["Bash", "PowerShell"]);
 const LEDGER = "digital-assets/systems-thinking/bets.md";
 // A saved bet is a NEW line with its BET: field (bet-tracker.md, Quiet save).
 const BET_LINE = /·\s*NEW\s*·[^\n]*\bBET:/;
-// Shell commands that change files. A redirect to a null device or 2>&1 doesn't count.
-const SHELL_WRITE = [
-  /(^|[^0-9&>])>{1,2}\s*(?!&|\/dev\/null|\$null|nul\b)[^\s|&;]/i,
-  /\btee\s/,
-  /\bsed\s[^|;&]*-i/,
-  /(^|[\s;&|(])(cp|mv|rm|mkdir|touch)\s/,
-  /\b(Set-Content|Add-Content|Out-File|New-Item|Copy-Item|Move-Item|Remove-Item|Rename-Item)\b/i,
-  /\[System\.IO\.File\]::(Write|Append)/i,
-  /\bgit\s+(commit|apply|restore)\b/
-];
+const DATED_BET = /^-\s*(\d{4}-\d{2}-\d{2})\s*·\s*NEW\s*·[^\n]*\bBET:/gm;
+// A shell command's text says nothing reliable about what it wrote (Astra
+// round 2: a python one-liner wrote a page unseen, "print(2 > 1)" looked like
+// a write). So a shell call only tells the hook to look at the disk.
+// Folders a member's build never lives in; the bounded scan skips them.
+const SKIP_DIRS = new Set(["node_modules", ".git", ".venv", "venv", "__pycache__", ".next", ".cache"]);
+const SCAN_LIMIT = 5000;
 const FAILED_RESULT = /^\s*(Error\b|<tool_use_error>)|user (rejected|denied)|was (rejected|denied|blocked)/i;
 
 const REASON =
@@ -71,6 +70,30 @@ function bookkeeping(rel) {
   return false;
 }
 
+// Files under root (not bookkeeping) modified at or after `since`. Bounded walk.
+function changedOnDisk(root, since) {
+  const found = [];
+  let seen = 0;
+  const walk = (dir, depth) => {
+    if (depth > 8 || seen > SCAN_LIMIT || found.length) return;
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (++seen > SCAN_LIMIT || found.length) return;
+      const full = path.join(dir, e.name);
+      const rel = path.relative(root, full);
+      if (bookkeeping(rel)) continue;
+      if (e.isDirectory()) {
+        if (!SKIP_DIRS.has(e.name)) walk(full, depth + 1);
+      } else if (e.isFile()) {
+        try { if (fs.statSync(full).mtimeMs >= since) found.push(rel); } catch {}
+      }
+    }
+  };
+  walk(root, 0);
+  return found;
+}
+
 function newText(input = {}) {
   const parts = [input.new_string, input.content, input.new_source];
   if (Array.isArray(input.edits)) for (const e of input.edits) parts.push(e?.new_string);
@@ -89,11 +112,14 @@ function readTranscript(file, cwd) {
   const calls = [];
   const ok = new Set();
   let noBet = false;
+  let since = Infinity; // when this chat began: its earliest record timestamp
   const root = path.resolve(cwd);
   for (const raw of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
     if (!raw.trim()) continue;
     let rec;
     try { rec = JSON.parse(raw); } catch { continue; }
+    const ts = Date.parse(rec?.timestamp || "");
+    if (Number.isFinite(ts) && ts < since) since = ts;
     const content = rec?.message?.content;
     if (!Array.isArray(content)) continue;
     for (const part of content) {
@@ -108,6 +134,7 @@ function readTranscript(file, cwd) {
   }
   const changed = [];
   let betSaved = false;
+  let shellRan = false;
   for (const part of calls) {
     if (!part.id || !ok.has(part.id)) continue;
     if (WRITE_TOOLS.has(part.name)) {
@@ -121,13 +148,22 @@ function readTranscript(file, cwd) {
       }
       if (!bookkeeping(rel)) changed.push(rel);
     } else if (SHELL_TOOLS.has(part.name)) {
-      const cmd = String(part.input?.command || "");
-      if (/digital-assets[\\/]+systems-thinking[\\/]+BETS\.md/i.test(cmd) && BET_LINE.test(cmd)) {
-        betSaved = true;
-        continue;
-      }
-      if (SHELL_WRITE.some((re) => re.test(cmd))) changed.push(`(shell) ${cmd.slice(0, 60)}`);
+      shellRan = true;
     }
+  }
+  // Evidence on disk, judged from when this chat began. Without a timestamp
+  // there is no "since", so only edit-tool evidence counts.
+  if (Number.isFinite(since)) {
+    const ledger = path.join(root, "digital-assets", "systems-thinking", "BETS.md");
+    try {
+      // The file must have changed in this chat AND hold a NEW bet dated on or
+      // after the day the chat began, so an older NEW line doesn't count.
+      if (!betSaved && fs.statSync(ledger).mtimeMs >= since) {
+        const day = new Date(since - new Date(since).getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        for (const m of fs.readFileSync(ledger, "utf8").matchAll(DATED_BET)) if (m[1] >= day) betSaved = true;
+      }
+    } catch {}
+    if (shellRan && !changed.length) changed.push(...changedOnDisk(root, since));
   }
   return { changed, betSaved, noBet };
 }
