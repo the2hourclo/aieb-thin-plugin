@@ -105,7 +105,10 @@ function changedOnDisk(root, since, shellText = "") {
       const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const named = (n) => {
         const p = esc(rel ? path.join(rel, n).replace(/\\/g, "/") : n);
-        return new RegExp(`(^|[\\s"'=;&|(]|\\./)${p}([\\s"'/;&|)]|$)`).test(shellText.replace(/\\/g, "/"));
+        // relative, ./relative, or absolute under this folder (Astra round 6)
+        const abs = esc(path.resolve(root).replace(/\\/g, "/").replace(/\/$/, ""));
+        const flags = process.platform === "win32" ? "i" : "";
+        return new RegExp(`(^|[\\s"'=;&|(])(?:\\./|${abs}/)?${p}([\\s"'/;&|)]|$)`, flags).test(shellText.replace(/\\/g, "/"));
       };
       const cleanup = [...SKIP_DIRS].some((n) => !present.has(n) && named(n));
       if (!explained && !cleanup) { found.push(rel || "."); return; }

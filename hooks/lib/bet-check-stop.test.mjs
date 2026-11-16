@@ -150,6 +150,17 @@ test("shell changes Astra round 3 named: .claude/skills writes, deletes and rena
   // ...while a cleanup that names the exact nested folder stays silent
   assert.equal(stop(setup({ calls: [{ name: "Bash", input: { command: "rm -rf ./web/node_modules" } }], before: { "web/node_modules/i.js": "1" },
     after: (ws) => fs.rmSync(path.join(ws, "web/node_modules"), { recursive: true }) })).stdout, "");
+  // an absolute path to the folder's own cache counts as that cleanup (Astra round 6)
+  const absClean = (ws) => ({ name: "Bash", input: { command: `rm -rf "${path.join(ws, "web", "node_modules")}"` } });
+  {
+    const ctx = setup({ before: { "web/node_modules/i.js": "1" }, after: (ws) => fs.rmSync(path.join(ws, "web/node_modules"), { recursive: true }) });
+    const recs = [
+      { type: "assistant", timestamp: new Date(Date.now() - 600000).toISOString(), message: { content: [{ type: "tool_use", id: "a", ...absClean(ctx.ws) }] } },
+      { type: "user", message: { content: [{ type: "tool_result", tool_use_id: "a", content: "ok" }] } }
+    ];
+    fs.writeFileSync(ctx.transcript, recs.map((r) => JSON.stringify(r)).join(String.fromCharCode(10)));
+    assert.equal(stop(ctx).stdout, "");
+  }
   // .claude bookkeeping alone stays silent, even when the file is new
   assert.equal(stop(setup({ calls: [sh], before: { "pages/a.md": "a" }, during: { ".claude/settings.local.json": "{}" } })).stdout, "");
 });
