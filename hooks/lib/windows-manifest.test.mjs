@@ -15,8 +15,13 @@ assert.equal(manifest.hooks, "./hooks/hooks.json", "Codex manifest must explicit
 const handlers = Object.entries(hooks.hooks).flatMap(([event, groups]) =>
   groups.flatMap((group) => group.hooks.map((hook) => ({ event, ...hook })))
 );
-assert.equal(handlers.length, 5);
-assert.equal(hooks.hooks.Stop, undefined, "the Stop outcome nudge is retired: nothing writes its marker on the remote connector");
+assert.equal(handlers.length, 7);
+// The old Stop outcome nudge stays retired; the one Stop hook allowed is the stop-once bet check.
+assert.deepEqual(
+  (hooks.hooks.Stop || []).flatMap((g) => g.hooks.map((h) => (h.commandWindows.match(/hooks\/(\w+)\.mjs/) || [])[1])),
+  ["bet_check_stop"],
+  "only the stop-once bet check may run on Stop"
+);
 assert.ok(!fs.existsSync(path.join(root, "hooks", "report_nudge_stop.mjs")));
 
 for (const handler of handlers) {
@@ -63,4 +68,4 @@ try {
   if (resolvedTemp.startsWith(resolvedOsTemp)) fs.rmSync(resolvedTemp, { recursive: true, force: true });
 }
 
-console.log("windows-manifest.test: Codex executed the SessionStart hook command; Stop hook retired");
+console.log("windows-manifest.test: Codex executed the SessionStart hook command; only the stop-once bet check runs on Stop");
