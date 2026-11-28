@@ -108,7 +108,7 @@ Both `.mcp.json` and `mcp.json` declare the remote resource:
 - Resuming or renewing restores access without reinstalling the plugin.
 - Access tokens expire quickly. Refresh tokens rotate on every use; replay revokes the token family.
 - Raw OAuth tokens and license keys are never stored in the database.
-- Free tools such as the AI Employee Map remain available without authentication.
+- Every request needs a sign-in, including free tools such as the AI Employee Map. Sign-in is free (Google or an email) and lasts a year, renewing on use.
 
 ### Repair flow
 
