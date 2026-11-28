@@ -1,6 +1,6 @@
 # AI Employee Builder plugin
 
-The AI Employee Builder plugin puts the AI Employee Builders skills inside Claude Code, Claude Desktop and Codex. You install it once. The free skills work straight away, and any skill you buy unlocks after you sign in.
+The AI Employee Builder plugin puts the AI Employee Builders skills inside Claude Code, Claude Desktop and Codex. You install it once. Sign in once (free, with Google or your email) and the free skills work. Any skill you buy unlocks on the same sign-in.
 
 This repository is the plugin itself: skill loaders, setup commands and optional hooks. The paid skill instructions are not stored here. When you run a skill you own, the AI Employee Builders server sends its instructions to your Claude, so you always get the latest version.
 
