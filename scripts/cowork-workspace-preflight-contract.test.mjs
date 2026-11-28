@@ -39,7 +39,7 @@ const marketplace = JSON.parse(read(".claude-plugin/marketplace.json"));
 assert.equal(marketplace.metadata.version, expectedVersion);
 assert.equal(marketplace.plugins[0].version, expectedVersion);
 assert.equal(JSON.parse(read("skill-telemetry/config.json")).plugin_version, `ai-employee-builder-${expectedVersion}`);
-assert.match(read("scripts/aieb-mcp-proxy.mjs"), /return "0.39.2";/);
+assert.match(read("scripts/aieb-mcp-proxy.mjs"), /return "0\.39\.2";/);
 
 // Members' skill stubs are loaders; any helper a frontmatter hook needs is not shipped.
 for (const entry of fs.readdirSync(path.join(root, "skills"), { withFileTypes: true })) {
